@@ -65,6 +65,7 @@ namespace lambda_converter
 
 
             Dictionary<SyntaxNode, SyntaxNode> replacement = new Dictionary<SyntaxNode, SyntaxNode>();
+            List<SyntaxNode> toBeInserted = new List<SyntaxNode>();
             foreach (var l in lambdas)
             {
                 var methodSymbol = semantic.GetSymbolInfo(l).Symbol as IMethodSymbol;
@@ -85,7 +86,6 @@ namespace lambda_converter
                     var returntype = methodSymbol.ReturnType as TypeSyntax;
                     var parsedReturntype = SyntaxFactory.ParseTypeName(methodSymbol.ReturnType.ToDisplayString());
 
-                    // var delDefinition = SyntaxFactory.DelegateDeclaration(returntype, delegateNameBase + (delegateIndex++));
                     var lambdCast = l as ParenthesizedLambdaExpressionSyntax;
 
                     if (lambdCast != null)
@@ -94,16 +94,29 @@ namespace lambda_converter
 
                         var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, "method" + delegateIndex++)
                         .WithParameterList(SyntaxFactory.ParseParameterList(paramsList))
-                        .WithBody(SyntaxFactory.Block(SyntaxFactory.ReturnStatement(SyntaxFactory.ParseExpression(lambdCast.Body.ToFullString())))).NormalizeWhitespace();
+                        .WithBody(SyntaxFactory.Block(SyntaxFactory.ReturnStatement(SyntaxFactory.ParseExpression(lambdCast.Body.ToFullString())))).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+                        
+                        toBeInserted.Add(methodDef);
 
                         var str = methodDef.ToFullString();
+
+                        //method call
+                        var method = SyntaxFactory.ParseExpression(methodDef.Identifier.ToFullString());
+
+                        replacement[l] = method;
+
+
                     }
 
                 }
-
-
             }
             root = root.ReplaceNodes(replacement.Keys, (n, m) => replacement[n]);
+            var firstChild = root.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>().First().DescendantNodes().First();
+            root = root.InsertNodesAfter(firstChild, toBeInserted);
+
+
+
+
             Console.WriteLine(root.SyntaxTree.ToString());
 
             return 0;
