@@ -39,6 +39,8 @@ namespace lambda_converter
         }
 
         static string CODELOCATION = ".\\target_code\\LambdaCode.cs";
+        static string delegateNameBase = "__generatedDelegate";
+        static int delegateIndex = 0;
         static int Main(string[] args)
         {
             string code;
@@ -51,16 +53,63 @@ namespace lambda_converter
 
             var tree = CSharpSyntaxTree.ParseText(code);
             var root = tree.GetRoot();
+            var mscorlib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+            var systemCore = MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location);
+            var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+            var comp = CSharpCompilation.Create("LambdaCode")
+                .AddReferences(mscorlib, systemCore)
+                .AddSyntaxTrees(tree).WithOptions(options);
+            var semantic = comp.GetSemanticModel(tree);
 
-            var lambdas = root.DescendantNodes().Where(m => IsLambda(m) == true);
-            
-            foreach( var l in lambdas)
+            var lambdas = root.DescendantNodes().Where(m => IsLambda(m) == true).ToList();
+
+
+            Dictionary<SyntaxNode, SyntaxNode> replacement = new Dictionary<SyntaxNode, SyntaxNode>();
+            foreach (var l in lambdas)
             {
-                Console.WriteLine(l.ToString());
+                var methodSymbol = semantic.GetSymbolInfo(l).Symbol as IMethodSymbol;
+
+
+                if (methodSymbol == null)
+                {
+                    continue;
+                }
+
+                if (methodSymbol.ReturnType != null)
+                {
+                    Console.WriteLine("Lambda: " + l.ToString() + " has return type " +
+                        methodSymbol.ReturnType + " and parameters' types: " +
+                        string.Join(" ", methodSymbol.Parameters.Select(m => m.Type.ToString())));
+
+
+                    var returntype = methodSymbol.ReturnType as TypeSyntax;
+                    var parsedReturntype = SyntaxFactory.ParseTypeName(methodSymbol.ReturnType.ToDisplayString());
+
+                    // var delDefinition = SyntaxFactory.DelegateDeclaration(returntype, delegateNameBase + (delegateIndex++));
+                    var lambdCast = l as ParenthesizedLambdaExpressionSyntax;
+
+                    if (lambdCast != null)
+                    {
+                        var paramsList = "(" + string.Join(", ", methodSymbol.Parameters.Zip(methodSymbol.Parameters, (m, n) => m.Type + " " + n.Name)) + ")";
+
+                        var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, "method" + delegateIndex++)
+                        .WithParameterList(SyntaxFactory.ParseParameterList(paramsList))
+                        .WithBody(SyntaxFactory.Block(SyntaxFactory.ReturnStatement(SyntaxFactory.ParseExpression(lambdCast.Body.ToFullString())))).NormalizeWhitespace();
+
+                        var str = methodDef.ToFullString();
+                    }
+
+                }
+
+
             }
+            root = root.ReplaceNodes(replacement.Keys, (n, m) => replacement[n]);
+            Console.WriteLine(root.SyntaxTree.ToString());
 
             return 0;
         }
+
+
 
         private static IEnumerable<object> SimpleLambdaExpression()
         {
