@@ -24,7 +24,7 @@ namespace lambda_converter.target_code
 
             fun el = new fun(m);
             var res = el(3, 2.4f);
-            var even = ints.Where((m) => (m % 2 == 0)).ToList();
+            var even = ints.Where(m => m % 2 == 0).ToList();
 
             int[] externalInts = { 1, 3, 5 };
             int[] localInts = { 3, 6, 9 };

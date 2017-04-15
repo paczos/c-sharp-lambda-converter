@@ -79,14 +79,26 @@ namespace lambda_converter
                     var returntype = methodSymbol.ReturnType as TypeSyntax;
                     var parsedReturntype = SyntaxFactory.ParseTypeName(methodSymbol.ReturnType.ToDisplayString());
 
-                    var lambdCast = l as ParenthesizedLambdaExpressionSyntax;
+                    var lambdCast = l as LambdaExpressionSyntax;
 
                     if (lambdCast != null)
                     {
                         BlockSyntax lambdaBody;
-                        var paramsList = "(" + string.Join(", ", methodSymbol.Parameters.Zip(methodSymbol.Parameters, (m, n) => m.Type + " " + n.Name)) + ")";
 
-                        if (methodSymbol.ReturnType.Name == "Void")
+
+                        DataFlowAnalysis result = semantic.AnalyzeDataFlow(lambdCast);
+                        var capturedString = result.DataFlowsIn.Select(m =>
+                        {
+                            var s = m as ILocalSymbol;
+                            return s.Type.Name + " " + s.Name;
+
+                        });
+
+
+
+                        var paramsListString = "(" + string.Join(", ", methodSymbol.Parameters.Select(m => m.Type.Name + " " + m.Name).Union(capturedString)) + ")";
+
+                        if (methodSymbol.ReturnType.SpecialType == SpecialType.System_Void)
                         {
                             //simply copy lambda body
                             lambdaBody = SyntaxFactory.Block(lambdCast.Body.DescendantNodes().OfType<StatementSyntax>());
@@ -107,9 +119,8 @@ namespace lambda_converter
                             }
                         }
 
-
                         var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, "method" + delegateIndex++)
-                        .WithParameterList(SyntaxFactory.ParseParameterList(paramsList))
+                        .WithParameterList(SyntaxFactory.ParseParameterList(paramsListString))
                         .WithBody(lambdaBody).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
 
                         methodsDefinitionsToBeInserted.Add(methodDef);
