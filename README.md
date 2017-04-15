@@ -44,7 +44,7 @@ Func<int, int> lambd3 = (n) =>
 ```
 #!C#
 string text = "this is some local text";
-Func<string, string> lambd4 = (n)=> text+n);
+Func<string, string> lambd4 = (n) => (text+n);
 ```
 
 
