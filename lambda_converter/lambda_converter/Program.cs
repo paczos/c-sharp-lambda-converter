@@ -1,11 +1,10 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 
 namespace lambda_converter
@@ -13,7 +12,6 @@ namespace lambda_converter
 
     class Program
     {
-
         static bool IsLambda(SyntaxNode node)
         {
             switch (node.Kind())
@@ -58,14 +56,15 @@ namespace lambda_converter
             var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
             var comp = CSharpCompilation.Create("LambdaCode")
                 .AddReferences(mscorlib, systemCore)
-                .AddSyntaxTrees(tree).WithOptions(options);
+                .AddSyntaxTrees(tree)
+                .WithOptions(options);
             var semantic = comp.GetSemanticModel(tree);
 
             var lambdas = root.DescendantNodes().Where(m => IsLambda(m) == true).ToList();
 
 
             Dictionary<SyntaxNode, SyntaxNode> replacement = new Dictionary<SyntaxNode, SyntaxNode>();
-            List<SyntaxNode> toBeInserted = new List<SyntaxNode>();
+            List<SyntaxNode> methodsDefinitionsToBeInserted = new List<SyntaxNode>();
             foreach (var l in lambdas)
             {
                 var methodSymbol = semantic.GetSymbolInfo(l).Symbol as IMethodSymbol;
@@ -75,14 +74,8 @@ namespace lambda_converter
                 {
                     continue;
                 }
-
                 if (methodSymbol.ReturnType != null)
                 {
-                    Console.WriteLine("Lambda: " + l.ToString() + " has return type " +
-                        methodSymbol.ReturnType + " and parameters' types: " +
-                        string.Join(" ", methodSymbol.Parameters.Select(m => m.Type.ToString())));
-
-
                     var returntype = methodSymbol.ReturnType as TypeSyntax;
                     var parsedReturntype = SyntaxFactory.ParseTypeName(methodSymbol.ReturnType.ToDisplayString());
 
@@ -90,43 +83,51 @@ namespace lambda_converter
 
                     if (lambdCast != null)
                     {
+                        BlockSyntax lambdaBody;
                         var paramsList = "(" + string.Join(", ", methodSymbol.Parameters.Zip(methodSymbol.Parameters, (m, n) => m.Type + " " + n.Name)) + ")";
+
+                        if (methodSymbol.ReturnType.Name == "Void")
+                        {
+                            //simply copy lambda body
+                            lambdaBody = SyntaxFactory.Block(lambdCast.Body.DescendantNodes().OfType<StatementSyntax>());
+
+                        }
+                        else
+                        {
+                            ExpressionSyntax expr = SyntaxFactory.ParseExpression(lambdCast.Body.ToFullString());
+                            if (lambdCast.DescendantNodes().OfType<ReturnStatementSyntax>().Any())
+                            {
+                                //do not insery return as it is already present
+                                lambdaBody = SyntaxFactory.Block(lambdCast.Body.DescendantNodes().OfType<StatementSyntax>());
+                            }
+                            else
+                            {
+                                //add return kword
+                                lambdaBody = SyntaxFactory.Block(SyntaxFactory.ReturnStatement(expr));
+                            }
+                        }
+
 
                         var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, "method" + delegateIndex++)
                         .WithParameterList(SyntaxFactory.ParseParameterList(paramsList))
-                        .WithBody(SyntaxFactory.Block(SyntaxFactory.ReturnStatement(SyntaxFactory.ParseExpression(lambdCast.Body.ToFullString())))).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
-                        
-                        toBeInserted.Add(methodDef);
+                        .WithBody(lambdaBody).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
 
-                        var str = methodDef.ToFullString();
+                        methodsDefinitionsToBeInserted.Add(methodDef);
 
                         //method call
                         var method = SyntaxFactory.ParseExpression(methodDef.Identifier.ToFullString());
 
                         replacement[l] = method;
-
-
                     }
-
                 }
             }
+
             root = root.ReplaceNodes(replacement.Keys, (n, m) => replacement[n]);
             var firstChild = root.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>().First().DescendantNodes().First();
-            root = root.InsertNodesAfter(firstChild, toBeInserted);
-
-
-
+            root = root.InsertNodesAfter(firstChild, methodsDefinitionsToBeInserted);
 
             Console.WriteLine(root.SyntaxTree.ToString());
-
             return 0;
-        }
-
-
-
-        private static IEnumerable<object> SimpleLambdaExpression()
-        {
-            throw new NotImplementedException();
         }
     }
 }

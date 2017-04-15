@@ -1,9 +1,6 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace lambda_converter.target_code
 {
@@ -18,6 +15,7 @@ namespace lambda_converter.target_code
         {
             return c == 0;
         }
+
         public void Method()
         {
             Func<int, bool> s = afun;
@@ -37,9 +35,8 @@ namespace lambda_converter.target_code
             string text = "result of zipping";
 
             //statement lamda with capture
-            zipped.ForEach(n =>
+            zipped.ForEach((n) =>
             {
-
                 Console.WriteLine(text);
                 Console.WriteLine(n);
             });
@@ -49,15 +46,11 @@ namespace lambda_converter.target_code
 
             //Func<int> voidLam = () => 3;
 
-
             //nested lambda
-            // Func<int,Func<int>> nested = (b) => () => b*3;
+            //Func<int,Func<int>> nested = (b) => () => b*3;
 
             //recursive lambda
             //Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
-
-
         }
-
     }
 }
