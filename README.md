@@ -123,30 +123,61 @@ namespace lambda_converter.target_code
 {
     class LambdaCode
     {
+        class lam1
+        {
+            bool method1 (int m)
+            {
+                return m % 2==0;
+            }
+        }
+        class lam2
+        {
+            int method1 (int m, int n)
+            {
+                return m - n;
+            }
+        }
 
+        class lam3
+        {
+            public string text;
+            void method1 (int n)
+            {
+                Console.WriteLine(text);
+                Console.WriteLine(n);
+            }
+        }
+        class lam4
+        {
+            float method1 (float o)
+            {
+                return  o - 1.3f;
+            }
+        }
         List<int> ints = new List<int> { 1, 356, 23, 1, 56, 2, 123, 555, 78, 221, 4, 0, 2, 5, 1 };
 
         public void Method()
         {
             var res = el(3, 2.4f);
-            var even = ints.Where(m => m % 2 == 0).ToList();
+            lam1 inst1 = new lam1();
+            var even = ints.Where(inst1.method1).ToList();
 
             int[] externalInts = { 1, 3, 5 };
             int[] localInts = { 3, 6, 9 };
 
             //expression lambda
-            var zipped = localInts.Zip(externalInts, (int m, int n) => { return m - n; }).ToList();
+            lam2 inst2 = new lam2();
+            var zipped = localInts.Zip(externalInts, inst2.method1).ToList();
 
             string text = "result of zipping";
 
             //statement lamda with capture
-            zipped.ForEach((n) =>
-            {
-                Console.WriteLine(text);
-                Console.WriteLine(n);
-            });
+            lam3 inst3 = new lam3();
+            inst3.text = text;
+            zipped.ForEach(inst3.method1);
 
-            Func<float, float> lam = (float o) => o - 1.3f;
+            lam4 inst4 = new lam4();
+            Func<float, float> lam = inst4.method1;
             lam(5.0f);
 
             //Func<int> voidLam = () => 3;
