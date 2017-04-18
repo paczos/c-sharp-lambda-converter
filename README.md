@@ -47,9 +47,69 @@ string text = "this is some local text";
 Func<string, string> lambd4 = (n) => (text+n);
 ```
 
+## Architecture and transformation principles ##
+Conversion is a process that is split into several stages.
+* syntax analyzer
+* semantic analyzer
+* transformer
 
-## Transformation principles ##
-Program infers types of arguments passed to the lambda expressions and looks for variables that are captured in its body. After this, a nested private class containing single method with signature same as lambda expression is constructed. If the lambda expression captures local variables, newly created class has fields that correspond to them. In the place where lambda expression is used, an instance of the new class is defined and its fields are populated with local variables. Next, instance's method is passed in place where lambda expression used to be.
+In the first stage code is passed to syntax analyzer that is used to find portions of the code that are lambda expressions. 
+
+The next stage makes use of semantic analyzer which infers types of arguments passed to the lambda expressions and looks for variables that are captured in the body.
+
+After this, using transformer, a nested private class containing single method with signature same as lambda expression is constructed. If the lambda expression captures local variables, newly created class has fields that correspond to them. In the place where lambda expression is used, an instance of the new class is defined and its fields are populated with local variables. Next, instance's method is passed in place where lambda expression used to be.
+
+
+# Example of input and output #
+
+```
+#!C#
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace lambda_converter.target_code
+{
+    class LambdaCode
+    {
+
+        List<int> ints = new List<int> { 1, 356, 23, 1, 56, 2, 123, 555, 78, 221, 4, 0, 2, 5, 1 };
+
+        public void Method()
+        {
+            var res = el(3, 2.4f);
+            var even = ints.Where(m => m % 2 == 0).ToList();
+
+            int[] externalInts = { 1, 3, 5 };
+            int[] localInts = { 3, 6, 9 };
+
+            //expression lambda
+            var zipped = localInts.Zip(externalInts, (int m, int n) => { return m - n; }).ToList();
+
+            string text = "result of zipping";
+
+            //statement lamda with capture
+            zipped.ForEach((n) =>
+            {
+                Console.WriteLine(text);
+                Console.WriteLine(n);
+            });
+
+            Func<float, float> lam = (float o) => o - 1.3f;
+            lam(5.0f);
+
+            //Func<int> voidLam = () => 3;
+
+            //nested lambda
+            //Func<int,Func<int>> nested = (b) => () => b*3;
+
+            //recursive lambda
+            //Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
+        }
+    }
+}
+```
 
 
 ```
