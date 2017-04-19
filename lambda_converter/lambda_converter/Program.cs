@@ -37,7 +37,6 @@ namespace lambda_converter
         }
 
         static string CODELOCATION = ".\\target_code\\LambdaCode.cs";
-        static string delegateNameBase = "__generatedDelegate";
         static int delegateIndex = 0;
         static int Main(string[] args)
         {
@@ -65,6 +64,8 @@ namespace lambda_converter
 
             Dictionary<SyntaxNode, SyntaxNode> replacement = new Dictionary<SyntaxNode, SyntaxNode>();
             List<SyntaxNode> methodsDefinitionsToBeInserted = new List<SyntaxNode>();
+            List<SyntaxNode> classesDefinitionsToBeInserted = new List<SyntaxNode>();
+
             foreach (var l in lambdas)
             {
                 var methodSymbol = semantic.GetSymbolInfo(l).Symbol as IMethodSymbol;
@@ -87,7 +88,8 @@ namespace lambda_converter
 
 
                         DataFlowAnalysis result = semantic.AnalyzeDataFlow(lambdCast);
-                        var capturedString = result.DataFlowsIn.Select(m =>
+                        var captured = result.DataFlowsIn;
+                        var capturedString = captured.Select(m =>
                         {
                             var s = m as ILocalSymbol;
                             return s.Type.Name + " " + s.Name;
@@ -96,7 +98,7 @@ namespace lambda_converter
 
 
 
-                        var paramsListString = "(" + string.Join(", ", methodSymbol.Parameters.Select(m => m.Type.Name + " " + m.Name).Union(capturedString)) + ")";
+                        var paramsListString = "(" + string.Join(", ", methodSymbol.Parameters.Select(m => m.Type.Name + " " + m.Name)) + ")";
 
                         if (methodSymbol.ReturnType.SpecialType == SpecialType.System_Void)
                         {
@@ -109,20 +111,37 @@ namespace lambda_converter
                             ExpressionSyntax expr = SyntaxFactory.ParseExpression(lambdCast.Body.ToFullString());
                             if (lambdCast.DescendantNodes().OfType<ReturnStatementSyntax>().Any())
                             {
-                                //do not insery return as it is already present
+                                //do not insert return as it is already present
                                 lambdaBody = SyntaxFactory.Block(lambdCast.Body.DescendantNodes().OfType<StatementSyntax>());
                             }
                             else
                             {
-                                //add return kword
+                                //add return statement
                                 lambdaBody = SyntaxFactory.Block(SyntaxFactory.ReturnStatement(expr));
                             }
                         }
+
+                        var instanceInitSyntax = SyntaxFactory.List<StatementSyntax>();
 
                         var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, "method" + delegateIndex++)
                         .WithParameterList(SyntaxFactory.ParseParameterList(paramsListString))
                         .WithBody(lambdaBody).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
 
+                        var fields = captured.Select(m =>
+                        {
+                            var sym = (m as ILocalSymbol);
+                            var type = SyntaxFactory.ParseTypeName(sym.Type.ToDisplayString());
+                            var name = sym.Name;
+                            return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name)))));
+                        });
+
+                        var methods = SyntaxFactory.SingletonList<MemberDeclarationSyntax>(methodDef);
+                        SyntaxList<MemberDeclarationSyntax> members = SyntaxFactory.List(fields.Union(methods));
+
+                        var classDecl = SyntaxFactory.ClassDeclaration("lambd").WithMembers(members).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+
+
+                        classesDefinitionsToBeInserted.Add(classDecl);
                         methodsDefinitionsToBeInserted.Add(methodDef);
 
                         //method call
@@ -133,9 +152,17 @@ namespace lambda_converter
                 }
             }
 
+
             root = root.ReplaceNodes(replacement.Keys, (n, m) => replacement[n]);
+
+
             var firstChild = root.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>().First().DescendantNodes().First();
-            root = root.InsertNodesAfter(firstChild, methodsDefinitionsToBeInserted);
+
+            root = root.InsertNodesAfter(firstChild, classesDefinitionsToBeInserted);
+
+            //TODO insert lambd  classes instances creation with field initializaions
+            
+            
 
             Console.WriteLine(root.SyntaxTree.ToString());
             return 0;

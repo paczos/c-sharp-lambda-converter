@@ -8,22 +8,8 @@ namespace lambda_converter.target_code
     {
         List<int> ints = new List<int> { 1, 356, 23, 1, 56, 2, 123, 555, 78, 221, 4, 0, 2, 5, 1 };
 
-        public delegate int fun(int a, float b);
-        int m(int c, float b) { return c; }
-
-        bool afun(int c)
-        {
-            return c == 0;
-        }
-
         public void Method()
         {
-            Func<int, bool> s = afun;
-
-            ints.Where(afun);
-
-            fun el = new fun(m);
-            var res = el(3, 2.4f);
             var even = ints.Where(m => m % 2 == 0).ToList();
 
             int[] externalInts = { 1, 3, 5 };
@@ -41,8 +27,12 @@ namespace lambda_converter.target_code
                 Console.WriteLine(n);
             });
 
-            Func<float, float> lam = (float o) => o - 1.3f;
-            lam(5.0f);
+            Func<int, int> sideEffects = (n) =>
+            {
+                Console.WriteLine(text);
+                Console.WriteLine(n);
+                return n % 2;
+            };
 
             //Func<int> voidLam = () => 3;
 
