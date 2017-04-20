@@ -5,7 +5,8 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
+using Microsoft.CodeAnalysis.Text;
+using Microsoft.CodeAnalysis.Editing;
 
 namespace lambda_converter
 {
@@ -38,7 +39,7 @@ namespace lambda_converter
 
         static string CODELOCATION = ".\\target_code\\LambdaCode.cs";
         static int delegateIndex = 0;
-        static int Main(string[] args)
+        static void Main(string[] args)
         {
             string code;
 
@@ -48,7 +49,15 @@ namespace lambda_converter
 
             }
 
-            var tree = CSharpSyntaxTree.ParseText(code);
+            var workspace = new AdhocWorkspace();
+            var projectId = ProjectId.CreateNewId();
+            var versionStamp = VersionStamp.Create();
+            var projectInfo = ProjectInfo.Create(projectId, versionStamp, "LambdNewProject", "labdaProjName", LanguageNames.CSharp);
+            var newProject = workspace.AddProject(projectInfo);
+            var document = workspace.AddDocument(newProject.Id, "NewFile.cs", SourceText.From(code));
+
+
+            var tree = document.GetSyntaxTreeAsync().Result;
             var root = tree.GetRoot();
             var mscorlib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
             var systemCore = MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location);
@@ -138,11 +147,44 @@ namespace lambda_converter
                         var methods = SyntaxFactory.SingletonList<MemberDeclarationSyntax>(methodDef);
                         SyntaxList<MemberDeclarationSyntax> members = SyntaxFactory.List(fields.Union(methods));
 
-                        var classDecl = SyntaxFactory.ClassDeclaration("lambd").WithMembers(members).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+                        var classDecl = SyntaxFactory.ClassDeclaration("lambd")
+                                                     .WithMembers(members)
+                                                     .NormalizeWhitespace()
+                                                     .WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
 
 
                         classesDefinitionsToBeInserted.Add(classDecl);
                         methodsDefinitionsToBeInserted.Add(methodDef);
+
+                        //instantiation and field filling
+
+                        var className = "lambdClass";
+                        var instanceName = "lambdInst";
+                        var methodName = "methodLambd";
+                        var instanceSyntax = SyntaxFactory.LocalDeclarationStatement(
+                            SyntaxFactory.VariableDeclaration(
+                                SyntaxFactory.IdentifierName(
+                                    SyntaxFactory.Identifier(className)))
+                                    .WithVariables(SyntaxFactory.SingletonSeparatedList(
+                                        SyntaxFactory.VariableDeclarator(
+                                            SyntaxFactory.Identifier(instanceName))
+                                            .WithInitializer(SyntaxFactory
+                                            .EqualsValueClause(SyntaxFactory
+                                            .ObjectCreationExpression(SyntaxFactory.IdentifierName(className))
+                                            .WithArgumentList(SyntaxFactory.ArgumentList()))))))
+                             .NormalizeWhitespace();
+
+                        //fill each capturing field
+                        var capturingFieldsAssignments = captured.Select(m =>
+                        {
+                            var sym = (m as ILocalSymbol);
+                            var type = SyntaxFactory.ParseTypeName(sym.Type.ToDisplayString());
+                            var name = sym.Name;
+                            var capturingFieldAssignment = SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName(instanceName), SyntaxFactory.IdentifierName(name)), SyntaxFactory.IdentifierName(name)));
+
+                            return capturingFieldAssignment;
+                        });
+                        Console.WriteLine(capturingFieldsAssignments.Count());
 
                         //method call
                         var method = SyntaxFactory.ParseExpression(methodDef.Identifier.ToFullString());
@@ -151,21 +193,28 @@ namespace lambda_converter
                     }
                 }
             }
+            // https://joshvarty.wordpress.com/2015/08/18/learn-roslyn-now-part-12-the-documenteditor/
+            var documentEditor = DocumentEditor.CreateAsync(document).Result;
 
 
-            root = root.ReplaceNodes(replacement.Keys, (n, m) => replacement[n]);
-
+            // documentEditor.ReplaceNodes(replacement.Keys, (n, m) => replacement[n]);
 
             var firstChild = root.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>().First().DescendantNodes().First();
 
-            root = root.InsertNodesAfter(firstChild, classesDefinitionsToBeInserted);
+            documentEditor.InsertAfter(firstChild, classesDefinitionsToBeInserted);
+
+            foreach (var n in replacement.Keys)
+            {
+
+                documentEditor.ReplaceNode(n, replacement[n]);
+            }
+            var updatedDoc = documentEditor.GetChangedDocument();
+
+
 
             //TODO insert lambd  classes instances creation with field initializaions
-            
-            
 
-            Console.WriteLine(root.SyntaxTree.ToString());
-            return 0;
+            Console.WriteLine(updatedDoc.GetSyntaxTreeAsync().Result.ToString());
         }
     }
 }

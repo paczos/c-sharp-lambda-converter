@@ -12,6 +12,6 @@ namespace lambda_converter.target_code
     {
         SyntaxNode OriginalLambdaNode;
         ClassDeclarationSyntax ClassDeclaration;
-
+        StatementSyntax StatementBeforeLambdaExpression;
     }
 }
