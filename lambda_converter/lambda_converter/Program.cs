@@ -102,13 +102,6 @@ namespace lambda_converter
 
                         DataFlowAnalysis result = semantic.AnalyzeDataFlow(lambdCast);
                         var captured = result.DataFlowsIn;
-                        var capturedString = captured.Select(m =>
-                        {
-                            var s = m as ILocalSymbol;
-                            return s.Type.Name + " " + s.Name;
-
-                        });
-
 
 
                         var paramsListString = "(" + string.Join(", ", methodSymbol.Parameters.Select(m => m.Type.Name + " " + m.Name)) + ")";
@@ -117,7 +110,6 @@ namespace lambda_converter
                         {
                             //simply copy lambda body
                             lambdaBody = SyntaxFactory.Block(lambdCast.Body.DescendantNodes().OfType<StatementSyntax>());
-
                         }
                         else
                         {
@@ -145,9 +137,10 @@ namespace lambda_converter
                         var fields = captured.Select(m =>
                         {
                             var sym = (m as ILocalSymbol);
-                            var type = SyntaxFactory.ParseTypeName(sym.Type.ToDisplayString());
-                            var name = sym.Name;
-                            return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name)))));
+                                  
+                                var type = SyntaxFactory.ParseTypeName(sym?.Type?.ToDisplayString());
+                                var name = sym.Name;
+                                return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name)))));
                         });
 
                         var methods = SyntaxFactory.SingletonList<MemberDeclarationSyntax>(methodDef);
@@ -161,7 +154,6 @@ namespace lambda_converter
                         transInfo.ClassDeclaration = classDecl;
 
                         //instantiation and field filling
-
 
                         var instanceSyntax = SyntaxFactory.LocalDeclarationStatement(
                             SyntaxFactory.VariableDeclaration(
@@ -209,15 +201,17 @@ namespace lambda_converter
             foreach (var trans in transformations)
             {
                 documentEditor.InsertAfter(firstChild, trans.ClassDeclaration);
-                var firstBlock = trans.OriginalLambdaNode.AncestorsAndSelf().OfType<BlockSyntax>().First().ChildNodes().First();
-
+                var statements = trans.OriginalLambdaNode.Ancestors().OfType<BlockSyntax>().FirstOrDefault().ChildNodes()
+                    .OfType<LocalDeclarationStatementSyntax>().ToList();
+                var index = statements.IndexOf(trans.OriginalLambdaNode.Ancestors().OfType<LocalDeclarationStatementSyntax>().FirstOrDefault());
+                var prevStatement = statements.ElementAtOrDefault(index - 1);
                 //TODO: MAKE THIS insertion more elegant, closer to the actual usage of the lambda expression
-                if (firstBlock != null)
-                    documentEditor.InsertBefore(firstBlock, (new List<SyntaxNode> { trans.InstanceInitSyntax }).Union(trans.StatementBeforeLambdaExpression));
+
+                if (prevStatement != null)
+                    documentEditor.InsertAfter(prevStatement, (new List<SyntaxNode> { trans.InstanceInitSyntax }).Union(trans.StatementBeforeLambdaExpression));
 
                 documentEditor.ReplaceNode(trans.OriginalLambdaNode, trans.MethodUsage);
             }
-
 
             var updatedDoc = documentEditor.GetChangedDocument();
             Console.WriteLine(updatedDoc.GetSyntaxTreeAsync().Result.ToString());
