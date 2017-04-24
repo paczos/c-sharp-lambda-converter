@@ -8,10 +8,12 @@ using System.Threading.Tasks;
 
 namespace lambda_converter.target_code
 {
-    struct TranformationInfo
+    class TranformationInfo
     {
-        SyntaxNode OriginalLambdaNode;
-        ClassDeclarationSyntax ClassDeclaration;
-        StatementSyntax StatementBeforeLambdaExpression;
+        public SyntaxNode OriginalLambdaNode;
+        public ClassDeclarationSyntax ClassDeclaration;
+        public LocalDeclarationStatementSyntax InstanceInitSyntax;
+        public List<ExpressionStatementSyntax> StatementBeforeLambdaExpression;
+        public ExpressionSyntax MethodUsage;
     }
 }
