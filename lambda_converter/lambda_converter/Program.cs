@@ -185,7 +185,7 @@ namespace lambda_converter
                             var name = sym.Name;
                             var capturingFieldAssignment = SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName(instanceName), SyntaxFactory.IdentifierName(name)), SyntaxFactory.IdentifierName(name)));
 
-                            return capturingFieldAssignment;
+                            return capturingFieldAssignment.NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n")); ;
                         });
 
                         transInfo.InstanceInitSyntax = instanceSyntax;
@@ -206,18 +206,15 @@ namespace lambda_converter
 
             var firstChild = root.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>().First().DescendantNodes().First();
 
-
             //transform code
             foreach (var trans in transformations)
             {
                 documentEditor.InsertAfter(firstChild, trans.ClassDeclaration);
                 var firstBlock = trans.OriginalLambdaNode.AncestorsAndSelf().OfType<BlockSyntax>().First().ChildNodes().First();
+
+                //TODO: MAKE THIS insertion more elegant, closer to the actual usage of the lambda expression
                 if (firstBlock != null)
-                    documentEditor.InsertBefore(firstBlock, trans.InstanceInitSyntax);
-
-
-                //documentEditor.InsertAfter(trans.OriginalLambdaNode.Parent.ChildNodes().First(), trans.StatementBeforeLambdaExpression);
-
+                    documentEditor.InsertBefore(firstBlock, (new List<SyntaxNode> { trans.InstanceInitSyntax }).Union(trans.StatementBeforeLambdaExpression));
 
                 documentEditor.ReplaceNode(trans.OriginalLambdaNode, trans.MethodUsage);
             }

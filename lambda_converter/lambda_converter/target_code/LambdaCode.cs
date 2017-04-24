@@ -19,12 +19,14 @@ namespace lambda_converter.target_code
             var zipped = localInts.Zip(externalInts, (int m, int n) => { return m - n; }).ToList();
 
             string text = "result of zipping";
-
+            string teee = "some random text";
+            int abba = 123;
             //statement lamda with capture
             zipped.ForEach((n) =>
             {
                 Console.WriteLine(text);
                 Console.WriteLine(n);
+                Console.WriteLine(teee + 3 * abba + text);
             });
 
             Func<int, int> sideEffects = (n) =>
