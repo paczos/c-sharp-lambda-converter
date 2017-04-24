@@ -202,13 +202,21 @@ namespace lambda_converter
             {
                 documentEditor.InsertAfter(firstChild, trans.ClassDeclaration);
                 var statements = trans.OriginalLambdaNode.Ancestors().OfType<BlockSyntax>().FirstOrDefault().ChildNodes()
-                    .OfType<LocalDeclarationStatementSyntax>().ToList();
-                var index = statements.IndexOf(trans.OriginalLambdaNode.Ancestors().OfType<LocalDeclarationStatementSyntax>().FirstOrDefault());
-                var prevStatement = statements.ElementAtOrDefault(index - 1);
+                    .OfType<LocalDeclarationStatementSyntax>().ToList<SyntaxNode>().Union(trans.OriginalLambdaNode.Ancestors()
+                    .OfType<ExpressionStatementSyntax>().ToList<SyntaxNode>()).ToList<SyntaxNode>();
+
+                var ancestors = trans.OriginalLambdaNode.Ancestors()
+                    .OfType<LocalDeclarationStatementSyntax>().ToList<SyntaxNode>()
+                    .Union(trans.OriginalLambdaNode.Ancestors()
+                    .OfType<ExpressionStatementSyntax>().ToList());
+                var index = statements.IndexOf(ancestors.FirstOrDefault());
+
+
+                var prevStatement = statements.ElementAtOrDefault(index);
                 //TODO: MAKE THIS insertion more elegant, closer to the actual usage of the lambda expression
 
                 if (prevStatement != null)
-                    documentEditor.InsertAfter(prevStatement, (new List<SyntaxNode> { trans.InstanceInitSyntax }).Union(trans.StatementBeforeLambdaExpression));
+                    documentEditor.InsertBefore(prevStatement, (new List<SyntaxNode> { trans.InstanceInitSyntax }).Union(trans.StatementBeforeLambdaExpression));
 
                 documentEditor.ReplaceNode(trans.OriginalLambdaNode, trans.MethodUsage);
             }
