@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace lambda_converter.target_code
+namespace lambda_converter
 {
     class TranformationInfo
     {
