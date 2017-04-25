@@ -132,15 +132,15 @@ namespace lambda_converter
 
                         var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, methodName)
                         .WithParameterList(SyntaxFactory.ParseParameterList(paramsListString))
-                        .WithBody(lambdaBody).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+                        .WithBody(lambdaBody).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword))).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
 
                         var fields = captured.Select(m =>
                         {
                             var sym = (m as ILocalSymbol);
-                                  
-                                var type = SyntaxFactory.ParseTypeName(sym?.Type?.ToDisplayString());
-                                var name = sym.Name;
-                                return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name)))));
+
+                            var type = SyntaxFactory.ParseTypeName(sym?.Type?.ToDisplayString());
+                            var name = sym.Name;
+                            return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name))))).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)));
                         });
 
                         var methods = SyntaxFactory.SingletonList<MemberDeclarationSyntax>(methodDef);
@@ -211,9 +211,7 @@ namespace lambda_converter
                     .OfType<ExpressionStatementSyntax>().ToList());
                 var index = statements.IndexOf(ancestors.FirstOrDefault());
 
-
                 var prevStatement = statements.ElementAtOrDefault(index);
-                //TODO: MAKE THIS insertion more elegant, closer to the actual usage of the lambda expression
 
                 if (prevStatement != null)
                     documentEditor.InsertBefore(prevStatement, (new List<SyntaxNode> { trans.InstanceInitSyntax }).Union(trans.StatementBeforeLambdaExpression));
