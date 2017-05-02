@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace lambda_converter
 {
-    class TranformationInfo
+    class TransformationInfo
     {
         public SyntaxNode OriginalLambdaNode;
         public ClassDeclarationSyntax ClassDeclaration;

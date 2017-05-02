@@ -2,14 +2,25 @@
 \usepackage{graphicx}
 \usepackage[utf8]{inputenc}
 \usepackage{hyperref}
-
+\usepackage{xcolor}
 \usepackage{listings}
 \usepackage[margin=0.9in]{geometry}
 \usepackage[toc,page]{appendix}
 \usepackage{mathtools}
 \renewcommand{\chaptername}{}
+\lstdefinestyle{sharpc}{
+ language=[Sharp]C, 		
+ belowcaptionskip=1\baselineskip,
+ breaklines=true,
+ frame=L,
+ xleftmargin=\parindent,
+ showstringspaces=false,
+ basicstyle=\footnotesize\ttfamily,
+ rulecolor=\color{blue!80!black}
+ }
+    
 % Title Page
-\title{ ECOTE Project (A21):  Program that converts C\# code with lambda expressions into code without lambda expressions}
+\title{ECOTE Project (A21):  Program that converts C\# code with lambda expressions into code without lambda expressions}
 
 \author{Author: Paweł Paczuski \\ Supervisor: dr inż. Anna Derezińska}
 
@@ -33,23 +44,134 @@
     
     \section{$\lambda$-calculus in programming}
     
-    In spite of a huge popularity of object-oriented languages like C\# JAVA, C++, several concepts from functional paradigm were incorporated into those languages. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
-    Using purely object-oriented approach, one would have to create an implementation of an interface that has a function that returns boolean value and is able to decide whether an element of the array satisfies expected conditions. The problem with this solution is the distance between code that makes decision about an element and the place where function that filters the array was called. When somebody reads code written in this manner, the have to 
-    This is the place where traditional $\lambda$ calculus gives practical tool that increases language expressiveness and therefore allows for writing code that is easier to read and has more bugs.
+    In spite of being object-oriented languages, C\# JAVA, C++, borrow several concepts from functional paradigm. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function examines properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
+    Using purely object-oriented approach, one would have to create an implementation of an interface that has a function that returns boolean value and is able to decide whether an element of the array satisfies all conditions. The problem with this solution is the distance between code that makes decision about an element and the place where function that filters the array was called. When somebody reads code written in this manner, the have to go to the definition of class and take a look at implementation of the interface method. A lot of boilerplate code is introduced and namespace is polluted with simple classes that provide no special functionality.
+    This is the place where traditional $\lambda$ calculus gives practical tool that increases language expressiveness and therefore allows for writing code that is easier to read and has more bugs. One could define anonymous function that decides about filtering an item in the place of calling filter function making the code much more expressive. This idea was implemented in C\# language mechanism called LINQ 
+    
+    \section{Lambda expressions in C\#}\label{lambdatypes}
+    Creators of C\# language decided to split syntax of a lambda expressions into several types.
+    Lambda expressions in C\# language consist of arguments, $=>$ operator and expression or statement block.\cite{csharplambdasyntax}
+    The $=>$ operator has the same precedence as assignment (=) and is right associative \cite{csharplambdasyntax}
+    
+    \subsection{Simple lambda expressions}
+    The simplest lambda expressions. They are constituted of a single argument, $=>$ operator and expression. Types of arguments and returned value can be inferred. 
+    \begin{lstlisting}[style=sharpc, caption=This lambda has single integer argument m and returns an integer m - 1]
+    Func<int, int> lambd1 = m => m - 1;
+    \end{lstlisting}
+
+    \subsection{Parenthesized lambda expressions}    
+    When lambda has more than one argument, parentheses have to be present. Single-argument lambda expression with parentheses also belongs to this category.
+    \begin{lstlisting}[style=sharpc, caption=]
+    Func<int, int, int> lambd2 = (int m, int n) => (m - n);
+    \end{lstlisting}
+    
+    \subsection{Statement lambdas}
+    Even more complex lambdas can contain statements within their body so, in addition to return value, they can have side effects.
+    \begin{lstlisting}[style=sharpc]
+    Func<int, int> lambd3 = (n) =>
+    {
+        Console.WriteLine(text);
+        Console.WriteLine(n);
+        return n % 2;
+    };
+    \end{lstlisting}
+    
+    \subsection{Lambda expressions capturing local variables}
+        Lambda expressions can implicitly capture local/instance variables. This has some serious implications e.g. when lambda expression capturing variable in a local block is assigned to a field of a class and then called in a different context, it has to be able to read value of a variable that used to be present in scope where it was assigned to the class field.
+        \begin{lstlisting}[style=sharpc, caption="lambd4 has access to the local variable text in any context that. This property is sometimes called closure"]        
+        string text = "this is some local text";
+        Func<string, string> lambd4 = (n) => (text+n);
+        \end{lstlisting}
+    
+    \subsection{Recursive lambda expressions}
+    These are lambda expressions that can define other lambda expressions in their body. Due to limited practical applications (their syntax is not easy to read which is contrary to the expectation that lambdas are used to make code more readable), they are not described in a detailed way in this document.
+    
+
+        \begin{lstlisting}[style=sharpc, caption="factorial defined using lambda"]
+        Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
+        \end{lstlisting}
     
     \chapter{Lambda converter for C\#}
     \section{Idea}
-   \section{Roslyn}
+    The goal is to create a program (from now on referred to as converter) that as an input receives source code written in C\# language that may contain lambda expressions of various kind. The program performs transformations of several kinds on the code in order to output modified version (but having the same functionality) of the code that contains no lambda expressions.
+    \section{Transformation stages}
+    The inner workings of the program can be split conceptually into several stages:
+    \begin{enumerate}
+    \item       Syntactic analysis
+    \item  		Semantic analysis
+    \item       Code transformation
+    \end{enumerate}
+    \subsection{Syntactic analysis}
+    In this stage the source code is analyzed in order to create syntax tree of the code. This data structure keeps all information about syntactic constructs in the input code. For a given syntax tree node, one can get information about its type, access modifier, identifier etc. 
+    \subsection{Semantic analysis}
+    Lambda conversion may require type inference for arguments and results, data flow information (what local scope variables are used in lambda's body), etc. These types of information can be taken from semantic model that is build using previously obtained syntax tree.
+    
+    \subsection{Code transformation}
+    
+    Information gathered in previous steps is used to find all lambda expressions in code that the program is capable of transforming. For each node transformation algorithm (described in section \ref{transalgorithm}) is applied.
+    
+    \section{Transformation algorithm}\label{transalgorithm}
+    \begin{enumerate}
+      \item {Determine which kind of lambda expression syntax described in section      
+      \ref{lambdatypes} current lambda has}
+   \item Determine names and types of lambda expression arguments
+   \item Analyze what variables from the scope are referenced in lambda's body
+   \item Create syntax node for a class declaration, give it unique identifier
+   \item Add fields to the class syntax node that correspond to types of variables and names of variables referenced in lambda's body
+   \item Create method syntax node that has the same return value as lambda, receives the same arguments and infer types of lambda's arguments. Its identifier can be e.g. "LambdaMethod". For statement lambda, copy original body into new method. For expression lambdas add return keyword and concatenate original body. For  
+   \item Insert method syntax node into newly created class syntax node
+   \item Insert class declaration syntax node into body of a class that contains lambda expression
+   \item Find last expression or statement before original lambda expression.
+   \item Create syntax nodes that correspond to instantiation of class, filling fields with values of variables from current scope. Insert those nodes just after the previously found node.
+    \item Create method reference syntax node. Replace syntax node that used to define lambda expression with method reference node.
+
+    \end{enumerate}
+    
+    \section{Roslyn}
+    \subsection{Motivation}
+    \subsection{Architecture}
+    
+   
+    
+    \section{Tests}
     
     
     
+    \section{Performance considerations}
+    \section{Practical applications}
+    
+    
+    
+    \section{Possible further improvements}
+
+\pagebreak
+
+    \section{Program code}
+
+   \subsection{Program.cs}
+
+
+    \lstinputlisting[style=sharpc]{"bin/Debug/Program.cs"}
+    \pagebreak
+    \subsection{TransformationInfo.cs}
+    \lstinputlisting[style=sharpc]{"bin/Debug/TransformationInfo.cs"}
+    \pagebreak
+    \subsection{Input}
+        \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/LambdaCode.cs"}
+            \pagebreak
+    \subsection{Output}
+        \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/NonLambdaCode.cs"}  
+                  
     
     
 \begin{thebibliography}{80}
     \bibitem{lambdintro} R. Rojas, A Tutorial Introduction to the Lambda Calculus
     \bibitem{lambddef} https://en.wikipedia.org/wiki/Lambda\_calculus accessed \date{01.05.2017}
     \bibitem{csharpgrammar} https://msdn.microsoft.com/en-us/library/aa664812(v=vs.71).aspx
+    \bibitem{csharplambdasyntax}
     accessed \date{01.05.2017}
+    \bibitem{roslynrepo} https://github.com/dotnet/roslyn
+    
     
 
 \end{thebibliography}

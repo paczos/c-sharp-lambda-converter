@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -37,7 +37,9 @@ namespace lambda_converter
             return false;
         }
 
-        static string CODELOCATION = ".\\target_code\\LambdaCode.cs";
+        static string CODELOCATION = ".\\targetCode\\LambdaCode.cs";
+        const string RESULTLOCATION = ".\\targetCode\\NonLambdaCode.cs";
+
         static int instanceIndex = 0;
         static int classIndex = 0;
         static void Main(string[] args)
@@ -73,11 +75,11 @@ namespace lambda_converter
 
 
             Dictionary<SyntaxNode, SyntaxNode> replacement = new Dictionary<SyntaxNode, SyntaxNode>();
-            List<TranformationInfo> transformations = new List<TranformationInfo>();
+            List<TransformationInfo> transformations = new List<TransformationInfo>();
 
             foreach (var l in lambdas)
             {
-                var transInfo = new TranformationInfo();
+                var transInfo = new TransformationInfo();
                 transInfo.OriginalLambdaNode = root.DescendantNodes().First(m => m == l);
 
 
@@ -203,7 +205,7 @@ namespace lambda_converter
                 documentEditor.InsertAfter(firstChild, trans.ClassDeclaration);
                 var statements = trans.OriginalLambdaNode.Ancestors().OfType<BlockSyntax>().FirstOrDefault().ChildNodes()
                     .OfType<LocalDeclarationStatementSyntax>().ToList<SyntaxNode>().Union(trans.OriginalLambdaNode.Ancestors()
-                    .OfType<ExpressionStatementSyntax>().ToList<SyntaxNode>()).ToList<SyntaxNode>();
+                    .OfType<ExpressionStatementSyntax>().ToList<SyntaxNode>()).ToList();
 
                 var ancestors = trans.OriginalLambdaNode.Ancestors()
                     .OfType<LocalDeclarationStatementSyntax>().ToList<SyntaxNode>()
@@ -220,7 +222,16 @@ namespace lambda_converter
             }
 
             var updatedDoc = documentEditor.GetChangedDocument();
-            Console.WriteLine(updatedDoc.GetSyntaxTreeAsync().Result.ToString());
+            string resultCode = updatedDoc.GetSyntaxTreeAsync().Result.ToString();
+            string[] resultLines = resultCode.Split('\n');
+            Console.WriteLine();
+            using(StreamWriter sr = new StreamWriter(RESULTLOCATION))
+            {
+                foreach(var l in resultLines)
+                {
+                    sr.WriteLine(l);
+                }
+            }
         }
     }
 }

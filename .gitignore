@@ -240,3 +240,7 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+/lambda_converter/lambda_converter/documentation.aux
+/lambda_converter/lambda_converter/documentation.out
+/lambda_converter/lambda_converter/documentation.synctex.gz
+/lambda_converter/lambda_converter/documentation.toc

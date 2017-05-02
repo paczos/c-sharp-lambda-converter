@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -35,9 +35,15 @@ namespace lambda_converter.target_code
                 Console.WriteLine(n);
                 return n % 2;
             };
+
+            //PLAYGROUND
+
+            Func<int> p = () => 3; //PARENTHESIZED
+            Func<int, int, int> a = (m, d) => 4;//Parentheses 
+
             
-            
-            
+            //siema OKOKOKOKOK
+
             //Func<int> voidLam = () => 3;
             
             //nested lambda
