@@ -50,7 +50,7 @@
     
     \section{Lambda expressions in C\#}\label{lambdatypes}
     Creators of C\# language decided to split syntax of a lambda expressions into several types.
-    Lambda expressions in C\# language consist of arguments, $=>$ operator and expression or statement block.\cite{csharplambdasyntax}
+    Lambda expressions in C\# language consist of arguments, $=>$ operator and expression or statement block.
     The $=>$ operator has the same precedence as assignment (=) and is right associative \cite{csharplambdasyntax}
     
     \subsection{Simple lambda expressions}
@@ -61,13 +61,14 @@
 
     \subsection{Parenthesized lambda expressions}    
     When lambda has more than one argument, parentheses have to be present. Single-argument lambda expression with parentheses also belongs to this category.
-    \begin{lstlisting}[style=sharpc, caption=]
+    \begin{lstlisting}[style=sharpc, caption=Lambda arguments can have types defined explicitly]
     Func<int, int, int> lambd2 = (int m, int n) => (m - n);
     \end{lstlisting}
     
     \subsection{Statement lambdas}
     Even more complex lambdas can contain statements within their body so, in addition to return value, they can have side effects.
-    \begin{lstlisting}[style=sharpc]
+    \begin{lstlisting}[style=sharpc, caption=execution lambd3 has side-effects that have no impact on the returned value]
+    string text = "abc";
     Func<int, int> lambd3 = (n) =>
     {
         Console.WriteLine(text);
@@ -91,12 +92,12 @@
         Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
         \end{lstlisting}
     
-    \chapter{Lambda converter for C\#}
+    \chapter{Lambda Converter for C\#}
     \section{Idea}
-    The goal is to create a program (from now on referred to as converter) that as an input receives source code written in C\# language that may contain lambda expressions of various kind. The program performs transformations of several kinds on the code in order to output modified version (but having the same functionality) of the code that contains no lambda expressions.
+    The goal is to create a program (from now on referred to as Converter) that as an input receives source code written in C\# language that may contain lambda expressions of various kind. The program performs transformations of several kinds on the code in order to output modified version (but having the same functionality) of the code that contains no lambda expressions.
     \section{Transformation stages}
     The inner workings of the program can be split conceptually into several stages:
-    \begin{enumerate}
+    \begin{enumerate}\label{transstages}
     \item       Syntactic analysis
     \item  		Semantic analysis
     \item       Code transformation
@@ -112,35 +113,54 @@
     
     \section{Transformation algorithm}\label{transalgorithm}
     \begin{enumerate}
-      \item {Determine which kind of lambda expression syntax described in section      
-      \ref{lambdatypes} current lambda has}
+      \item {Determine which kind of lambda expression syntax described in section  \ref{lambdatypes} current lambda has}
    \item Determine names and types of lambda expression arguments
    \item Analyze what variables from the scope are referenced in lambda's body
    \item Create syntax node for a class declaration, give it unique identifier
    \item Add fields to the class syntax node that correspond to types of variables and names of variables referenced in lambda's body
-   \item Create method syntax node that has the same return value as lambda, receives the same arguments and infer types of lambda's arguments. Its identifier can be e.g. "LambdaMethod". For statement lambda, copy original body into new method. For expression lambdas add return keyword and concatenate original body. For  
+   \item Create method syntax node that has the same return value as lambda, receives the same arguments and infer types of lambda's arguments. Its identifier can be e.g. "LambdaMethod". For statement lambda, copy original body into new method. For expression lambdas, add return keyword and concatenate with original body.
    \item Insert method syntax node into newly created class syntax node
    \item Insert class declaration syntax node into body of a class that contains lambda expression
    \item Find last expression or statement before original lambda expression.
    \item Create syntax nodes that correspond to instantiation of class, filling fields with values of variables from current scope. Insert those nodes just after the previously found node.
     \item Create method reference syntax node. Replace syntax node that used to define lambda expression with method reference node.
-
     \end{enumerate}
     
     \section{Roslyn}
     \subsection{Motivation}
+    The problem of converting code containing lambda expressions has a lot of inherited complexity. The C\# language is a multi-paradigm language that evolved since its first release. Therefore, a grammar that defines it has many productions. The task of writing lexer and parser on our own as a subtask of the whole project would take a lot of time and effort to finish. Luckily, the creators of C\# language provide a set of open-source tools used to analyze and transform code called Roslyn. Roslyn exposes the C\#  compiler’s code analysis to a programmer as a consumer by providing an API layer that mirrors a traditional compiler pipeline. \cite{roslynrepo} Roslyn is used in the first two stages of operation of the Converter described in \ref{transstages}.
+
     \subsection{Architecture}
-    
    
+    Roslyn consists of two layers of API: compilers API and workspaces API.\\
+    Compilers API provides programmer with object models that are used at each stage of the compilation: syntactic and semantic.\\
+    Workspace API provides an object model to aggregate the code model across projects in a solution. Mainly for code analysis and refactoring around IDEs like Visual Studio, though the APIs are not dependent on Visual Studio\cite{workspaceapi}. 
+    
+    \subsubsection{Syntactic model}
+    Syntactic model is represented mainly by a syntax tree whose nodes are called syntax nodes-constructs that represent syntactic elements such as statements, declarations, clauses, expressions, etc.\\
+    \subsubsection{Semantic model}
+    Semantic model adds to the syntactic model about language rules and how the information flows in regions of source code. 
+    Semantic model uses symbols as representations of a distinct element declared by the source code or imported from an assembly as metadata. Every namespace, type, method, property, field, event, parameter, or local variable is represented by a symbol\cite{roslynoverview}.
+    
+    \subsubsection{Workspace}
+    Workspace is an abstraction that describes solution as a collection of projects that contain documents with source code. This API is used in Converter in order to make syntax node insertion easier and efficient.
+    
+
+    \section{Errors}
+    Main class of errors that can occur while executing Converter are those caused by improper syntax of the code.  
     
     \section{Tests}
     
     
     
+    
     \section{Performance considerations}
+    Due to immutability of the syntax tree implementation provided by Roslyn, each insertion creates a new snapshot of the tree. This has to be taken into consideration when inserting/removing nodes. Solution to it is to use built-in mechanism of batch-insertions. Because each modification creates new tree, a remembered place in the code is lost. To keep track of changes DocumentEditor abstraction can be used. It is helpful when one deals with many modifications but requires usage of workspace API that has performance drawbacks.
+    
     \section{Practical applications}
-    
-    
+    Increasing popularity of refactoring tools like Jetbrain's Resharper or tools included in Visual Studio installation like intellisense or refactor-suggestions make it quite possible that Lamba Converter could be used in this kind of tooling to allow for quick transformations of portions of code.
+    \\
+    One could also use Lambda Converter to teach about lambda expressions and how they can be implemented in programming languages.
     
     \section{Possible further improvements}
 
@@ -168,10 +188,11 @@
     \bibitem{lambdintro} R. Rojas, A Tutorial Introduction to the Lambda Calculus
     \bibitem{lambddef} https://en.wikipedia.org/wiki/Lambda\_calculus accessed \date{01.05.2017}
     \bibitem{csharpgrammar} https://msdn.microsoft.com/en-us/library/aa664812(v=vs.71).aspx
-    \bibitem{csharplambdasyntax}
+    \bibitem{csharplambdasyntax} https://msdn.microsoft.com/en-us/library/bb397687.aspx
     accessed \date{01.05.2017}
     \bibitem{roslynrepo} https://github.com/dotnet/roslyn
-    
+    \bibitem{roslynoverview} https://github.com/dotnet/roslyn/wiki/Roslyn Overview
+    \bibitem{workspaceapi} http://www.amazedsaint.com/2011/10/c-vnext-roslynan-introduction-and-quick.html
     
 
 \end{thebibliography}
