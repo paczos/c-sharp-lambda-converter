@@ -1,0 +1,56 @@
+\documentclass[]{report}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+\usepackage{listings}
+\usepackage[margin=0.9in]{geometry}
+\usepackage[toc,page]{appendix}
+\usepackage{mathtools}
+\renewcommand{\chaptername}{}
+% Title Page
+\title{ ECOTE Project (A21):  Program that converts C\# code with lambda expressions into code without lambda expressions}
+
+\author{Author: Paweł Paczuski \\ Supervisor: dr inż. Anna Derezińska}
+
+\begin{document}
+    \maketitle
+    
+    \tableofcontents
+    \pagebreak
+    
+    \chapter{Theoretical introduction}
+    \section{$\lambda$ calculus in Mathematics}
+    Lambda calculus was introduced as a mean of formalizing the concept of expressing computation based on function abstraction and application using variable binding and substitution long before computers and programming languages existed. \cite{lambddef}
+    The central concept in $\lambda$ calculus is "expression". A  "name",  also  called a "variable", is an identifier which, for our purposes, can be any of the letters
+    a,b,c,...
+    An expression is defined recursively as follows\cite{lambdintro}:\\
+    $<$expression$>:=< $name$ >|< $function$ >|< $application$ > $ \\
+    $<$function $>:= \lambda < $name$ >.< $expression$ > $\\
+    $<$application$>:=<$expression$ >< $expression$ > $\\
+    
+    $\lambda$  calculus can be used to express any computable function. Because of this fact it is equivalent to Turing machines but the computational power of $\lambda$ calculus is not connected in any way with hardware implementation. This concept is more likely to be implemented using software.
+    
+    \section{$\lambda$-calculus in programming}
+    
+    In spite of a huge popularity of object-oriented languages like C\# JAVA, C++, several concepts from functional paradigm were incorporated into those languages. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
+    Using purely object-oriented approach, one would have to create an implementation of an interface that has a function that returns boolean value and is able to decide whether an element of the array satisfies expected conditions. The problem with this solution is the distance between code that makes decision about an element and the place where function that filters the array was called. When somebody reads code written in this manner, the have to 
+    This is the place where traditional $\lambda$ calculus gives practical tool that increases language expressiveness and therefore allows for writing code that is easier to read and has more bugs.
+    
+    \chapter{Lambda converter for C\#}
+    \section{Idea}
+   \section{Roslyn}
+    
+    
+    
+    
+    
+\begin{thebibliography}{80}
+    \bibitem{lambdintro} R. Rojas, A Tutorial Introduction to the Lambda Calculus
+    \bibitem{lambddef} https://en.wikipedia.org/wiki/Lambda\_calculus accessed \date{01.05.2017}
+    \bibitem{csharpgrammar} https://msdn.microsoft.com/en-us/library/aa664812(v=vs.71).aspx
+    accessed \date{01.05.2017}
+    
+
+\end{thebibliography}
+\end{document}
