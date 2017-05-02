@@ -107,9 +107,6 @@ namespace lambda_converter.target_code
 
             //nested lambda
             //Func<int,Func<int>> nested = (b) => () => b*3;
-
-            //recursive lambda
-            //Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
         }
     }
 }
@@ -189,8 +186,6 @@ namespace lambda_converter.target_code
             //nested lambda
             //Func<int,Func<int>> nested = (b) => () => b*3;
 
-            //recursive lambda
-            //Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
         }
     }
 }
