@@ -53,6 +53,7 @@ Func<string, string> lambd4 = (n) => (text+n);
 
 ## Architecture and transformation principles ##
 Conversion is a process that is split into several stages.
+
 * syntax analyzer
 * semantic analyzer
 * transformer
