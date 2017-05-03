@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace lambda_converter
 {
@@ -136,12 +137,12 @@ namespace lambda_converter
                         .WithParameterList(SyntaxFactory.ParseParameterList(paramsListString))
                         .WithBody(lambdaBody).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword))).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
 
-                        var fields = captured.Select(m =>
+                        var fields = captured.Where(m=> (m as ILocalSymbol)!=null).Select(m =>
                         {
                             var sym = (m as ILocalSymbol);
 
                             var type = SyntaxFactory.ParseTypeName(sym?.Type?.ToDisplayString());
-                            var name = sym.Name;
+                            var name = sym?.Name;
                             return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name))))).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)));
                         });
 
@@ -171,7 +172,7 @@ namespace lambda_converter
                              .NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n")); ;
 
                         //fill each capturing field
-                        var capturingFieldsAssignments = captured.Select(m =>
+                        var capturingFieldsAssignments = captured.Where(m=> (m as ILocalSymbol)!=null).Select(m =>
                         {
                             var sym = (m as ILocalSymbol);
                             var type = SyntaxFactory.ParseTypeName(sym.Type.ToDisplayString());
@@ -221,7 +222,7 @@ namespace lambda_converter
                 documentEditor.ReplaceNode(trans.OriginalLambdaNode, trans.MethodUsage);
             }
 
-            var updatedDoc = documentEditor.GetChangedDocument();
+            var updatedDoc = Formatter.FormatAsync(documentEditor.GetChangedDocument()).Result;
             string resultCode = updatedDoc.GetSyntaxTreeAsync().Result.ToString();
             string[] resultLines = resultCode.Split('\n');
             Console.WriteLine();

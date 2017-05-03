@@ -31,7 +31,7 @@
     \pagebreak
     
     \chapter{Theoretical introduction}
-    \section{$\lambda$ calculus in Mathematics}
+    \section{$\lambda$-calculus in Mathematics}
     Lambda calculus was introduced as a mean of formalizing the concept of expressing computation based on function abstraction and application using variable binding and substitution long before computers and programming languages existed. \cite{lambddef}
     The central concept in $\lambda$ calculus is "expression". A  "name",  also  called a "variable", is an identifier which, for our purposes, can be any of the letters
     a,b,c,...
@@ -44,7 +44,7 @@
     
     \section{$\lambda$-calculus in programming}
     
-    In spite of being object-oriented languages, C\# JAVA, C++, borrow several concepts from functional paradigm. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function examines properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
+    In spite of being object-oriented languages, C\#, JAVA, C++ borrow several concepts from functional paradigm. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function examines properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
     Using purely object-oriented approach, one would have to create an implementation of an interface that has a function that returns boolean value and is able to decide whether an element of the array satisfies all conditions. The problem with this solution is the distance between code that makes decision about an element and the place where function that filters the array was called. When somebody reads code written in this manner, the have to go to the definition of class and take a look at implementation of the interface method. A lot of boilerplate code is introduced and namespace is polluted with simple classes that provide no special functionality.
     This is the place where traditional $\lambda$ calculus gives practical tool that increases language expressiveness and therefore allows for writing code that is easier to read and has more bugs. One could define anonymous function that decides about filtering an item in the place of calling filter function making the code much more expressive. This idea was implemented in C\# language mechanism called LINQ 
     
@@ -138,6 +138,7 @@
     
     \subsubsection{Syntactic model}
     Syntactic model is represented mainly by a syntax tree whose nodes are called syntax nodes-constructs that represent syntactic elements such as statements, declarations, clauses, expressions, etc.\\
+    
     \subsubsection{Semantic model}
     Semantic model adds to the syntactic model about language rules and how the information flows in regions of source code. 
     Semantic model uses symbols as representations of a distinct element declared by the source code or imported from an assembly as metadata. Every namespace, type, method, property, field, event, parameter, or local variable is represented by a symbol\cite{roslynoverview}.
@@ -145,26 +146,22 @@
     \subsubsection{Workspace}
     Workspace is an abstraction that describes solution as a collection of projects that contain documents with source code. This API is used in Converter in order to make syntax node insertion easier and efficient.
     
-
     \section{Errors}
     Main class of errors that can occur while executing Converter are those caused by improper syntax of the code.  
     
     \section{Tests}
-    
-    
+     Source code that contains cases tested during development of the program is included in section \ref{testsInput} and results of conversion are included in section \ref{testsOutput}
     
     
     \section{Performance considerations}
-    Due to immutability of the syntax tree implementation provided by Roslyn, each insertion creates a new snapshot of the tree. This has to be taken into consideration when inserting/removing nodes. Solution to it is to use built-in mechanism of batch-insertions. Because each modification creates new tree, a remembered place in the code is lost. To keep track of changes DocumentEditor abstraction can be used. It is helpful when one deals with many modifications but requires usage of workspace API that has performance drawbacks.
+    Due to immutability of the syntax tree implementation provided by Roslyn, each insertion creates a new snapshot of the tree. This has to be taken into consideration when inserting/removing nodes. Solution to it is to use built-in mechanism of batch-insertions. Because each modification creates new tree, a remembered place in the code is lost. To keep track of changes DocumentEditor abstraction can be used. It is helpful when one deals with many modifications but requires usage of Workspace API that has performance drawbacks.
     
     \section{Practical applications}
-    Increasing popularity of refactoring tools like Jetbrain's Resharper or tools included in Visual Studio installation like intellisense or refactor-suggestions make it quite possible that Lamba Converter could be used in this kind of tooling to allow for quick transformations of portions of code.
+    Increasing popularity of refactoring tools like JetBrain's Resharper or tools included in Visual Studio installation like Intellisense or refactor-suggestions make it quite possible that Lambda Converter could be used in this kind of tooling to allow for quick transformations of portions of code.
     \\
-    One could also use Lambda Converter to teach about lambda expressions and how they can be implemented in programming languages.
-    
-    \section{Possible further improvements}
+    One could also use Lambda Converter to teach about lambda expressions and how they can be implemented in programming languages. 
 
-\pagebreak
+    \pagebreak
 
     \section{Program code}
 
@@ -176,10 +173,10 @@
     \subsection{TransformationInfo.cs}
     \lstinputlisting[style=sharpc]{"bin/Debug/TransformationInfo.cs"}
     \pagebreak
-    \subsection{Input}
+    \subsection{Input}\label{testsInput}
         \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/LambdaCode.cs"}
             \pagebreak
-    \subsection{Output}
+    \subsection{Output}\label{testsOutput}
         \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/NonLambdaCode.cs"}  
                   
     

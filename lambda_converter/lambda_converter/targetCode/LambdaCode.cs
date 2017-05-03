@@ -34,23 +34,16 @@ namespace lambda_converter.target_code
                 Console.WriteLine(text);
                 Console.WriteLine(n);
                 return n % 2;
-            };
+            };            
 
-            //PLAYGROUND
-
-            Func<int> p = () => 3; //PARENTHESIZED
-            Func<int, int, int> a = (m, d) => 4;//Parentheses 
-
-            
-            //siema OKOKOKOKOK
 
             //Func<int> voidLam = () => 3;
             
-            //nested lambda
+            //nested lambda-this should be converted partially
             //Func<int,Func<int>> nested = (b) => () => b*3;
 
-            //recursive lambda
-            //Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
+            //recursive lambda - this should be converted partially
+           // Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
         }
     }
 }
