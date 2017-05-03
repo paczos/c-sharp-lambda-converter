@@ -8,14 +8,18 @@ namespace lambda_converter.target_code
     {
         List<int> ints = new List<int> { 1, 356, 23, 1, 56, 2, 123, 555, 78, 221, 4, 0, 2, 5, 1 };
 
+        int someClassField = 100;
+        int anotherClassField = 3;
+        int modifiedClassField = 0;
         public void Method()
         {
+            //SimpleLambdaExpression
             var even = ints.Where(m => m % 2 == 0).ToList();
 
             int[] externalInts = { 1, 3, 5 };
             int[] localInts = { 3, 6, 9 };
 
-            //expression lambda
+            //ParenthesisedLambdaExpression
             var zipped = localInts.Zip(externalInts, (int m, int n) => { return m - n; }).ToList();
 
             string text = "result of zipping";
@@ -29,12 +33,37 @@ namespace lambda_converter.target_code
                 Console.WriteLine(teee + 3 * abba + text);
             });
 
+
+
+            int someClassField = 0;
+            //this will result in error (referencing class field):
             Func<int, int> sideEffects = (n) =>
             {
                 Console.WriteLine(text);
-                Console.WriteLine(n);
+                Console.WriteLine(n + this.someClassField);
+                someClassField++;
+                return n % 2;
+            };
+            //this time class field  anotherClassField is not hidden
+            sideEffects = (n) =>
+            {
+                Console.WriteLine(text);
+                Console.WriteLine(n + anotherClassField);
+                modifiedClassField = 1;
+                return n % 2;
+            };
+
+            //but after small modification it can work:
+            LambdaCode lam = this;
+            sideEffects = (n) =>
+            {
+                Console.WriteLine(text);
+                Console.WriteLine(n+lam.someClassField);
                 return n % 2;
             };            
+
+
+
 
 
             //Func<int> voidLam = () => 3;

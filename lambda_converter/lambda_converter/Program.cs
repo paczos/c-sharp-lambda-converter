@@ -16,6 +16,7 @@ namespace lambda_converter
     {
         static bool IsLambda(SyntaxNode node)
         {
+            //all kinds of syntaxnodes that are represented by lambda expressions
             switch (node.Kind())
             {
                 case SyntaxKind.ParenthesizedLambdaExpression:
@@ -38,11 +39,13 @@ namespace lambda_converter
             return false;
         }
 
-        static string CODELOCATION = ".\\targetCode\\LambdaCode.cs";
+        const string CODELOCATION = ".\\targetCode\\LambdaCode.cs";
         const string RESULTLOCATION = ".\\targetCode\\NonLambdaCode.cs";
-
+        const string LAMBDA_CLASS_BASENAME = "lambdClass";
+        const string LAMBDA_METHOD_BASENAME = "methodLambd";
         static int instanceIndex = 0;
         static int classIndex = 0;
+
         static void Main(string[] args)
         {
             string code;
@@ -78,13 +81,13 @@ namespace lambda_converter
             Dictionary<SyntaxNode, SyntaxNode> replacement = new Dictionary<SyntaxNode, SyntaxNode>();
             List<TransformationInfo> transformations = new List<TransformationInfo>();
 
-            foreach (var l in lambdas)
+            foreach (var lambda in lambdas)
             {
                 var transInfo = new TransformationInfo();
-                transInfo.OriginalLambdaNode = root.DescendantNodes().First(m => m == l);
+                transInfo.OriginalLambdaNode = root.DescendantNodes().First(m => m == lambda);
 
-
-                var methodSymbol = semantic.GetSymbolInfo(l).Symbol as IMethodSymbol;
+                var symbol = semantic.GetSymbolInfo(lambda).Symbol;
+                var methodSymbol =  symbol as IMethodSymbol;
 
 
                 if (methodSymbol == null)
@@ -96,14 +99,15 @@ namespace lambda_converter
                     var returntype = methodSymbol.ReturnType as TypeSyntax;
                     var parsedReturntype = SyntaxFactory.ParseTypeName(methodSymbol.ReturnType.ToDisplayString());
 
-                    var lambdCast = l as LambdaExpressionSyntax;
+                    var lambdaExpression = lambda as LambdaExpressionSyntax;
 
-                    if (lambdCast != null)
+                    if (lambdaExpression != null)
                     {
                         BlockSyntax lambdaBody;
 
 
-                        DataFlowAnalysis result = semantic.AnalyzeDataFlow(lambdCast);
+                        DataFlowAnalysis result = semantic.AnalyzeDataFlow(lambdaExpression);
+                        
                         var captured = result.DataFlowsIn;
 
 
@@ -112,15 +116,16 @@ namespace lambda_converter
                         if (methodSymbol.ReturnType.SpecialType == SpecialType.System_Void)
                         {
                             //simply copy lambda body
-                            lambdaBody = SyntaxFactory.Block(lambdCast.Body.DescendantNodes().OfType<StatementSyntax>());
+                            lambdaBody = SyntaxFactory.Block(
+                                lambdaExpression.Body.DescendantNodes().OfType<StatementSyntax>());
                         }
                         else
                         {
-                            ExpressionSyntax expr = SyntaxFactory.ParseExpression(lambdCast.Body.ToFullString());
-                            if (lambdCast.DescendantNodes().OfType<ReturnStatementSyntax>().Any())
+                            ExpressionSyntax expr = SyntaxFactory.ParseExpression(lambdaExpression.Body.ToFullString());
+                            if (lambdaExpression.DescendantNodes().OfType<ReturnStatementSyntax>().Any())
                             {
-                                //do not insert return as it is already present
-                                lambdaBody = SyntaxFactory.Block(lambdCast.Body.DescendantNodes().OfType<StatementSyntax>());
+                                //do not insert return statement as it is already present
+                                lambdaBody = SyntaxFactory.Block(lambdaExpression.Body.DescendantNodes().OfType<StatementSyntax>());
                             }
                             else
                             {
@@ -129,22 +134,28 @@ namespace lambda_converter
                             }
                         }
 
-                        var className = "lambdClass" + classIndex++;
+                        var className = LAMBDA_CLASS_BASENAME + classIndex++;
                         var instanceName = "lambdInst" + instanceIndex++;
-                        var methodName = "methodLambd";
+                        
 
-                        var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, methodName)
+                        var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, LAMBDA_METHOD_BASENAME)
                         .WithParameterList(SyntaxFactory.ParseParameterList(paramsListString))
                         .WithBody(lambdaBody).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword))).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
 
                         var fields = captured.Where(m=> (m as ILocalSymbol)!=null).Select(m =>
                         {
                             var sym = (m as ILocalSymbol);
-
+                            
                             var type = SyntaxFactory.ParseTypeName(sym?.Type?.ToDisplayString());
                             var name = sym?.Name;
                             return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name))))).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)));
                         });
+
+
+                        if(captured.Where(m=>(m as IParameterSymbol) != null).Any())
+                        {
+                            Console.Error.WriteLine("Cannot convert lambdas that refer to class fields using this keyword. Is this keyword neccessary?");
+                        }
 
                         var methods = SyntaxFactory.SingletonList<MemberDeclarationSyntax>(methodDef);
                         SyntaxList<MemberDeclarationSyntax> members = SyntaxFactory.List(fields.Union(methods));
@@ -179,7 +190,7 @@ namespace lambda_converter
                             var name = sym.Name;
                             var capturingFieldAssignment = SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName(instanceName), SyntaxFactory.IdentifierName(name)), SyntaxFactory.IdentifierName(name)));
 
-                            return capturingFieldAssignment.NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n")); ;
+                            return capturingFieldAssignment.NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("")); ;
                         });
 
                         transInfo.InstanceInitSyntax = instanceSyntax;
@@ -222,7 +233,11 @@ namespace lambda_converter
                 documentEditor.ReplaceNode(trans.OriginalLambdaNode, trans.MethodUsage);
             }
 
+            try
+            {
+
             var updatedDoc = Formatter.FormatAsync(documentEditor.GetChangedDocument()).Result;
+            
             string resultCode = updatedDoc.GetSyntaxTreeAsync().Result.ToString();
             string[] resultLines = resultCode.Split('\n');
             Console.WriteLine();
@@ -232,6 +247,17 @@ namespace lambda_converter
                 {
                     sr.WriteLine(l);
                 }
+            }
+
+            }
+            catch(IOException ex)
+            {
+                Console.Error.WriteLine("IO Exception-cannot write output to file"+ex.ToString());
+
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Unexpected transformation error  occured while generating final output:  " + ex.ToString());
             }
         }
     }
