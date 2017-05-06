@@ -31,7 +31,7 @@
     \pagebreak
     
     \chapter{Theoretical introduction}
-    \section{$\lambda$-calculus in Mathematics}
+    \section{Lambda calculus in Mathematics}
     Lambda calculus was introduced as a mean of formalizing the concept of expressing computation based on function abstraction and application using variable binding and substitution long before computers and programming languages existed. \cite{lambddef}
     The central concept in $\lambda$ calculus is "expression". A  "name",  also  called a "variable", is an identifier which, for our purposes, can be any of the letters
     a,b,c,...
@@ -40,11 +40,13 @@
     $<$function $>:= \lambda < $name$ >.< $expression$ > $\\
     $<$application$>:=<$expression$ >< $expression$ > $\\
     
+    The evaluation of lambda
+    
     $\lambda$  calculus can be used to express any computable function. Because of this fact it is equivalent to Turing machines but the computational power of $\lambda$ calculus is not connected in any way with hardware implementation. This concept is more likely to be implemented using software.
     
-    \section{$\lambda$-calculus in programming}
+    \section{Lambda calculus in programming}
     
-    In spite of being object-oriented languages, C\#, JAVA, C++ borrow several concepts from functional paradigm. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function examines properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
+    In spite of being object-oriented, languages C\#, JAVA and C++ borrow several concepts from functional paradigm. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function examines properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
     Using purely object-oriented approach, one would have to create an implementation of an interface that has a function that returns boolean value and is able to decide whether an element of the array satisfies all conditions. The problem with this solution is the distance between code that makes decision about an element and the place where function that filters the array was called. When somebody reads code written in this manner, the have to go to the definition of class and take a look at implementation of the interface method. A lot of boilerplate code is introduced and namespace is polluted with simple classes that provide no special functionality.
     This is the place where traditional $\lambda$ calculus gives practical tool that increases language expressiveness and therefore allows for writing code that is easier to read and has more bugs. One could define anonymous function that decides about filtering an item in the place of calling filter function making the code much more expressive. This idea was implemented in C\# language mechanism called LINQ 
     
@@ -66,7 +68,7 @@
     \end{lstlisting}
     
     \subsection{Statement lambdas}
-    Even more complex lambdas can contain statements within their body so, in addition to return value, they can have side effects.
+    More complex lambdas can contain statements within their body so, in addition to return value, they can have side effects.
     \begin{lstlisting}[style=sharpc, caption=execution lambd3 has side-effects that have no impact on the returned value]
     string text = "abc";
     Func<int, int> lambd3 = (n) =>
@@ -110,6 +112,7 @@
     \subsection{Code transformation}
     
     Information gathered in previous steps is used to find all lambda expressions in code that the program is capable of transforming. For each node transformation algorithm (described in section \ref{transalgorithm}) is applied.
+    After all compatible lambda expressions have been replaced, the resulting syntax tree is being converted into code it represents, and resulting code is reformatted in order to increase readability.
     
     \section{Transformation algorithm}\label{transalgorithm}
     \begin{enumerate}
@@ -137,55 +140,91 @@
     Workspace API provides an object model to aggregate the code model across projects in a solution. Mainly for code analysis and refactoring around IDEs like Visual Studio, though the APIs are not dependent on Visual Studio\cite{workspaceapi}. 
     
     \subsubsection{Syntactic model}
-    Syntactic model is represented mainly by a syntax tree whose nodes are called syntax nodes-constructs that represent syntactic elements such as statements, declarations, clauses, expressions, etc.\\
+    Syntactic model is represented mainly by a syntax tree whose nodes are called syntax nodes-constructs that represent syntactic elements such as statements, declarations, clauses, expressions, etc.\\ Implementation of syntax tree used in Roslyn is immutable, which means that any change to nodes of the tree results in creation of a clone of the tree with selected nodes different. This allows for parallelism as most of Roslyn APIs are thread-safe.
     
     \subsubsection{Semantic model}
     Semantic model adds to the syntactic model about language rules and how the information flows in regions of source code. 
-    Semantic model uses symbols as representations of a distinct element declared by the source code or imported from an assembly as metadata. Every namespace, type, method, property, field, event, parameter, or local variable is represented by a symbol\cite{roslynoverview}.
+    Semantic model uses symbols as representations of a distinct element declared by the source code or imported from an assembly as metadata. Every name-space, type, method, property, field, event, parameter, or local variable is represented by a symbol\cite{roslynoverview}.
     
     \subsubsection{Workspace}
     Workspace is an abstraction that describes solution as a collection of projects that contain documents with source code. This API is used in Converter in order to make syntax node insertion easier and efficient.
     
     \section{Limitations}
-    When a class field is hidden 
+        The program was developed with assumption that the input is C\#code that would normally be stored in a single file. On the other hand, this assumption can be changed  quite easily to introduce support for more complex input.
+        \\
+     In spite of having the capability of capturing local variables to be used in lambda body, Converter lacks the functionality that would capture fields of a class in which lambda expression is defined. 
+     \\
+     Another limitation is no support for nested lambda expressions. This is a construction that is very  rarely used in practice, so it was decided that this language feature can be omitted in the proof-of-concept implementation.
+    \\
+    Some minor differences can be observed when one deals with C\# value types (float, double). They are internally implemented as structs named Single, Double respectively. This has no direct effects on the execution of output code.
     \section{Errors}
-    Main class of errors that can occur while executing Converter are those caused by improper syntax of the code.  
+    Main class of errors that can occur while executing Converter are categorized into two groups:
+    \begin{list}
+        \item Improper input code. Program throws ImproperInputCodeException whenever a code that is no a proper C\# code is provided as input.
+        \item Unsupported trasformation. Program throws UnsupportedCodeTransformationException whenever input contains code has lambda expressions that can not be converted using the implemented algorithm. 
+    \end{list}
+
     
     \section{Tests}
-     Source code that contains cases tested during development of the program is included in section \ref{testsInput} and results of conversion are included in section \ref{testsOutput}
+This section contains description of scenarios that were taken into consideration while developing the program. Code that implements these cases is included in section \ref{testsInput} and results of conversion are included in section \ref{testsOutput}. In order to increase correctness of the final solution, tests  were written before the actual program. 
+
+     \begin{itemize}
+         \item Test if SimpleLambdaExpressions are converted properly
+         \item Test if ParenthesisedLambdaExpressions are converted properly
+         \item Test if lambda expression containing statements are converted properly
+         \item Test if lambda expressions inserted into LINQ constructs are converted properly
+         \item Test if arguments of the lambda expressions are inferred
+         \item Test if arguments with types specified are used properly
+         \item Test if Converter captures all variables that are  used in lambda body
+        \item Test if Converter signals an error when lambda captures field of the ancestor-class
+        \item Test if Converter signals an error when input code is not a proper C\# code
+        \item Test if Converter deals with conversion of reference types, value types, built-in types, user-defined  types
+        \item Test if Converter instantiates generated classes properly, all fields are filled
+        \item Test if Converter replaces lambda expression with method
+        \item Test if Converter reformats the output code
+        \item Test if all fields of generated class are public
+        
+        \end{itemize}
+     
+
+    
     
     
     \section{Performance considerations}
     Due to immutability of the syntax tree implementation provided by Roslyn, each insertion creates a new snapshot of the tree. This has to be taken into consideration when inserting/removing nodes. Solution to it is to use built-in mechanism of batch-insertions. Because each modification creates new tree, a remembered place in the code is lost. To keep track of changes DocumentEditor abstraction can be used. It is helpful when one deals with many modifications but requires usage of Workspace API that has performance drawbacks.
     
     \section{Practical applications}
-    Increasing popularity of refactoring tools like JetBrain's Resharper or tools included in Visual Studio installation like Intellisense or refactor-suggestions make it quite possible that Lambda Converter could be used in this kind of tooling to allow for quick transformations of portions of code.
+    Increasing popularity of refactoring tools like JetBrain's Resharper or tools included in Visual Studio installation like Intellisense or refactor-suggestions make it quite possible that Lambda Converter could be used in this kind of tooling to allow for quick transformations of portions of code. Program in its current form would be quite easy to convert into a Visual Studio extension.
     \\
     One could also use Lambda Converter to teach about lambda expressions and how they can be implemented in programming languages. 
 
-    \pagebreak
 
+\section {Exemplary input and output}
+    \subsection{Input}\label{testsInput}
+    \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/LambdaCode.cs"}
+    \pagebreak
+    \subsection{Output}\label{testsOutput}
+    \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/NonLambdaCode.cs"} 
     \section{Lambda Transformer code}
 
    \subsection{Program.cs}
-
-
     \lstinputlisting[style=sharpc]{"bin/Debug/Program.cs"}
     \pagebreak
+    
+    \subsection{LambdaConverter.cs}
+    \lstinputlisting[style=sharpc]{"bin/Debug/LambdaConverter.cs"}
+    \pagebreak
+    
     \subsection{TransformationInfo.cs}
     \lstinputlisting[style=sharpc]{"bin/Debug/TransformationInfo.cs"}
     \pagebreak
-    \subsection{Input}\label{testsInput}
-        \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/LambdaCode.cs"}
-            \pagebreak
-    \subsection{Output}\label{testsOutput}
-        \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/NonLambdaCode.cs"}  
+ 
                   
     
     
 \begin{thebibliography}{80}
-    \bibitem{lambdintro} R. Rojas, A Tutorial Introduction to the Lambda Calculus
     \bibitem{lambddef} https://en.wikipedia.org/wiki/Lambda\_calculus accessed \date{01.05.2017}
+    \bibitem{lambdintro} R. Rojas, A Tutorial Introduction to the Lambda Calculus
     \bibitem{csharpgrammar} https://msdn.microsoft.com/en-us/library/aa664812(v=vs.71).aspx
     \bibitem{csharplambdasyntax} https://msdn.microsoft.com/en-us/library/bb397687.aspx
     accessed \date{01.05.2017}

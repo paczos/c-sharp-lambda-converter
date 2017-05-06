@@ -11,8 +11,17 @@ namespace lambda_converter.target_code
         int someClassField = 100;
         int anotherClassField = 3;
         int modifiedClassField = 0;
+
+        class UserDefinedType
+        {
+            public int a;
+            float c;
+
+        }
+
         public void Method()
         {
+
             //SimpleLambdaExpression
             var even = ints.Where(m => m % 2 == 0).ToList();
 
@@ -33,9 +42,19 @@ namespace lambda_converter.target_code
                 Console.WriteLine(teee + 3 * abba + text);
             });
 
+            Func<int> voidLam = () => 3;
+
+            //Check if custom reference types converted properly
+            Func<UserDefinedType, int> custTypeLambda = (UserDefinedType a) => a.a;
+            Func<UserDefinedStruct, int> custStructLambda = (UserDefinedStruct b) => b.a - 1;
+            //float and double types (value types) converted to  Single, Double struct types
+            Func<float, float> floatLambda = (f) => f - 1.3f;
+            Func<double, double> doubleLambda = (f) => f - 1.3d;
+            Func<Single, Single> float2 = s => 2.0f - s;
+            /*
+             //SOME cases from the whole C# grammar that are not supported by the converter
 
 
-            int someClassField = 0;
             //this will result in error (referencing class field):
             Func<int, int> sideEffects = (n) =>
             {
@@ -44,6 +63,8 @@ namespace lambda_converter.target_code
                 someClassField++;
                 return n % 2;
             };
+            
+            
             //this time class field  anotherClassField is not hidden
             sideEffects = (n) =>
             {
@@ -61,18 +82,18 @@ namespace lambda_converter.target_code
                 Console.WriteLine(n+lam.someClassField);
                 return n % 2;
             };            
-
-
-
-
-
-            //Func<int> voidLam = () => 3;
             
             //nested lambda-this should be converted partially
             //Func<int,Func<int>> nested = (b) => () => b*3;
 
             //recursive lambda - this should be converted partially
            // Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
+    */
+        }
+
+        private class UserDefinedStruct
+        {
+            public int a;
         }
     }
 }
