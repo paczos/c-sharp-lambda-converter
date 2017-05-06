@@ -40,10 +40,23 @@
     $<$function $>:= \lambda < $name$ >.< $expression$ > $\\
     $<$application$>:=<$expression$ >< $expression$ > $\\
     
-    The evaluation of lambda
+    Lambda  calculus can be used to express any computable function. Because of this fact it is equivalent to Turing machines but the computational power of lambda calculus is not connected in any way with hardware implementation. This concept is more likely to be implemented using software.
     
-    $\lambda$  calculus can be used to express any computable function. Because of this fact it is equivalent to Turing machines but the computational power of $\lambda$ calculus is not connected in any way with hardware implementation. This concept is more likely to be implemented using software.
-    
+    \subsection{Evaluations}
+Function applications are evaluated by substituting the value of the argument x in the body of the function definition, i.e.
+\begin{equation}
+    (\lambda x.x)y=[y/x]x=y
+\end{equation}
+The notation $[y/x]$ is used to indicate that all occurrences of x are substituted by y in the expression to the right \cite{lambdintro}.
+Another example of substitution:
+\begin{equation}
+(\lambda x.(\lambda y.(x(\lambda x.xy))))y
+\end{equation}
+In order not to mix variable y occurrences - it is used as a bound variable and free variable in this expression, it should be renamed\cite{lambdintro}.
+\begin{equation}
+[y/x](\lambda t.(x(\lambda x.xt))) = (\lambda t.(y(\lambda x.xy)))
+\end{equation}
+Lambda expression is evaluated until it is not possible to reduce it more.\cite{lambdintro}
     \section{Lambda calculus in programming}
     
     In spite of being object-oriented, languages C\#, JAVA and C++ borrow several concepts from functional paradigm. One of them is the concept of anonymous function. Exemplary situation in which anonymous functions are useful can be filtering array using some set of predicates. Existing array is being iterated over and a function is called with each element of the array as its argument. The function examines properties of the element and returns boolean value. If the function returns true, the element is being pushed to the array that is result of filtering the former one. Otherwise, this element is skipped. 
@@ -159,14 +172,14 @@
     Some minor differences can be observed when one deals with C\# value types (float, double). They are internally implemented as structs named Single, Double respectively. This has no direct effects on the execution of output code.
     \section{Errors}
     Main class of errors that can occur while executing Converter are categorized into two groups:
-    \begin{list}
+    \begin{itemize}
         \item Improper input code. Program throws ImproperInputCodeException whenever a code that is no a proper C\# code is provided as input.
         \item Unsupported trasformation. Program throws UnsupportedCodeTransformationException whenever input contains code has lambda expressions that can not be converted using the implemented algorithm. 
-    \end{list}
+    \end{itemize}
 
     
     \section{Tests}
-This section contains description of scenarios that were taken into consideration while developing the program. Code that implements these cases is included in section \ref{testsInput} and results of conversion are included in section \ref{testsOutput}. In order to increase correctness of the final solution, tests  were written before the actual program. 
+This section contains description of scenarios that were taken into consideration while developing the program. Verifications of majority of them can be observed in the exemplary input/output sections.
 
      \begin{itemize}
          \item Test if SimpleLambdaExpressions are converted properly
@@ -183,7 +196,6 @@ This section contains description of scenarios that were taken into consideratio
         \item Test if Converter replaces lambda expression with method
         \item Test if Converter reformats the output code
         \item Test if all fields of generated class are public
-        
         \end{itemize}
      
 
@@ -196,7 +208,7 @@ This section contains description of scenarios that were taken into consideratio
     \section{Practical applications}
     Increasing popularity of refactoring tools like JetBrain's Resharper or tools included in Visual Studio installation like Intellisense or refactor-suggestions make it quite possible that Lambda Converter could be used in this kind of tooling to allow for quick transformations of portions of code. Program in its current form would be quite easy to convert into a Visual Studio extension.
     \\
-    One could also use Lambda Converter to teach about lambda expressions and how they can be implemented in programming languages. 
+    One could also use Lambda Converter to teach about lambda expressions and how they can be implemented in programming languages. This can be especially useful for teaching programmers that are proficient in object-oriented programming and want to expand their knowledge about functional  programming.
 
 
 \section {Exemplary input and output}
@@ -205,6 +217,7 @@ This section contains description of scenarios that were taken into consideratio
     \pagebreak
     \subsection{Output}\label{testsOutput}
     \lstinputlisting[style=sharpc]{"bin/Debug/targetCode/NonLambdaCode.cs"} 
+    \pagebreak
     \section{Lambda Transformer code}
 
    \subsection{Program.cs}
@@ -229,8 +242,11 @@ This section contains description of scenarios that were taken into consideratio
     \bibitem{csharplambdasyntax} https://msdn.microsoft.com/en-us/library/bb397687.aspx
     accessed \date{01.05.2017}
     \bibitem{roslynrepo} https://github.com/dotnet/roslyn
-    \bibitem{roslynoverview} https://github.com/dotnet/roslyn/wiki/Roslyn Overview
+    accessed \date{01.05.2017}
+    \bibitem{roslynoverview} https://github.com/dotnet/roslyn/wiki/Roslyn\_ Overview
+    accessed \date{01.05.2017}
     \bibitem{workspaceapi} http://www.amazedsaint.com/2011/10/c-vnext-roslynan-introduction-and-quick.html
+    accessed \date{02.05.2017}
     
 
 \end{thebibliography}

@@ -51,44 +51,6 @@ namespace lambda_converter.target_code
             Func<float, float> floatLambda = (f) => f - 1.3f;
             Func<double, double> doubleLambda = (f) => f - 1.3d;
             Func<Single, Single> float2 = s => 2.0f - s;
-            /*
-             //SOME cases from the whole C# grammar that are not supported by the converter
-
-
-            //this will result in error (referencing class field):
-            Func<int, int> sideEffects = (n) =>
-            {
-                Console.WriteLine(text);
-                Console.WriteLine(n + this.someClassField);
-                someClassField++;
-                return n % 2;
-            };
-            
-            
-            //this time class field  anotherClassField is not hidden
-            sideEffects = (n) =>
-            {
-                Console.WriteLine(text);
-                Console.WriteLine(n + anotherClassField);
-                modifiedClassField = 1;
-                return n % 2;
-            };
-
-            //but after small modification it can work:
-            LambdaCode lam = this;
-            sideEffects = (n) =>
-            {
-                Console.WriteLine(text);
-                Console.WriteLine(n+lam.someClassField);
-                return n % 2;
-            };            
-            
-            //nested lambda-this should be converted partially
-            //Func<int,Func<int>> nested = (b) => () => b*3;
-
-            //recursive lambda - this should be converted partially
-           // Func<Func<int, int>, Func<int, int>> factorial = (fac) => x => x == 0 ? 0 : x * fac(x - 1); 
-    */
         }
 
         private class UserDefinedStruct
