@@ -2,12 +2,6 @@
 
 A21 Program that converts code with lambda expressions into code without lambda expressions. The code is a subset of Java or C#.
 
-* [x] TODO: brief introduction to lambda calculus
-* [x] TODO: describe roslyn and its data structures
-* [x] TODO: transformation principles as a list of tasks
-
-
-
 ## Idea ##
 
 As input the program receives path to a file with source code written in C# language that may contain lambda expressions of various kind. The program performs transformations of several kind on the code in order to output modified version of the code that contains no lambda expressions.

@@ -26,7 +26,7 @@ namespace lambda_converter
             }
         }
 
-        private static bool isLambda(SyntaxNode node)
+        public static bool isLambda(SyntaxNode node)
         {
             //all kinds of syntaxnodes that are represented by lambda expressions
             switch (node.Kind())
@@ -51,18 +51,25 @@ namespace lambda_converter
             return false;
         }
 
+        //functionality tests, code
+        //unique class names
+        //printed final report
+
         const string LAMBDA_CLASS_BASENAME = "lambdClass";
         const string LAMBDA_METHOD_BASENAME = "methodLambd";
-        static int instanceIndex = 0;
+        const string LAMBDA_CLASS_INSTANCE_BASENAME = "lambdInst";
         static int classIndex = 0;
-
 
         public static string Convert(string code)
         {
             var workspace = new AdhocWorkspace();
             var projectId = ProjectId.CreateNewId();
             var versionStamp = VersionStamp.Create();
-            var projectInfo = ProjectInfo.Create(projectId, versionStamp, "LambdNewProject", "labdaProjName", LanguageNames.CSharp);
+            var projectInfo = ProjectInfo.Create(projectId,
+                                                versionStamp,
+                                                "LambdNewProject",
+                                                "labdaProjName",
+                                                LanguageNames.CSharp);
             var newProject = workspace.AddProject(projectInfo);
             var document = workspace.AddDocument(newProject.Id, "NewFile.cs", SourceText.From(code));
 
@@ -79,7 +86,6 @@ namespace lambda_converter
             var semantic = comp.GetSemanticModel(tree);
 
             var lambdas = root.DescendantNodes().Where(m => isLambda(m) == true).ToList();
-
 
             Dictionary<SyntaxNode, SyntaxNode> replacement = new Dictionary<SyntaxNode, SyntaxNode>();
             List<TransformationInfo> transformations = new List<TransformationInfo>();
@@ -113,7 +119,8 @@ namespace lambda_converter
 
                         var captured = result.DataFlowsIn;
                         var parentClass = lambda.Ancestors().OfType<ClassDeclarationSyntax>().First();
-                        var parentClassFields = semantic.LookupSymbols(parentClass.ChildNodes().OfType<MethodDeclarationSyntax>().First().SpanStart).OfType<IFieldSymbol>();
+                        var parentClassFields = semantic.LookupSymbols(parentClass.ChildNodes()
+                            .OfType<MethodDeclarationSyntax>().First().SpanStart).OfType<IFieldSymbol>();
                         var lambdaFields = semantic.LookupSymbols(lambda.SpanStart).OfType<ILocalSymbol>();
 
                         var paramsListString = "(" + string.Join(", ", methodSymbol.Parameters.Select(m => m.Type.Name + " " + m.Name)) + ")";
@@ -132,7 +139,8 @@ namespace lambda_converter
                             if (lambdaExpression.DescendantNodes().OfType<ReturnStatementSyntax>().Any())
                             {
                                 //do not insert return statement as it is already present
-                                lambdaBody = SyntaxFactory.Block(lambdaExpression.Body.DescendantNodes().OfType<StatementSyntax>());
+                                lambdaBody = SyntaxFactory.Block(lambdaExpression.Body.DescendantNodes()
+                                    .OfType<StatementSyntax>());
                             }
                             else
                             {
@@ -141,27 +149,38 @@ namespace lambda_converter
                             }
                         }
 
-                        var className = LAMBDA_CLASS_BASENAME + classIndex++;
-                        var instanceName = "lambdInst" + instanceIndex++;
+                        var className = GetNextClassName();
 
+                        while (semantic.LookupSymbols(lambdaExpression.SpanStart).Select(m => m.Name).Contains(className))
+                        {
+                            className = GetNextClassName();
+                        }
+
+                        var instanceName = LAMBDA_CLASS_INSTANCE_BASENAME + classIndex;
 
                         var methodDef = SyntaxFactory.MethodDeclaration(parsedReturntype, LAMBDA_METHOD_BASENAME)
                         .WithParameterList(SyntaxFactory.ParseParameterList(paramsListString))
-                        .WithBody(lambdaBody).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword))).NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+                        .WithBody(lambdaBody).WithModifiers(SyntaxFactory
+                            .TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)))
+                            .NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+
 
                         var fields = captured.Where(m => (m as ILocalSymbol) != null).Select(m =>
                         {
                             var sym = (m as ILocalSymbol);
-
                             var type = SyntaxFactory.ParseTypeName(sym?.Type?.ToDisplayString());
                             var name = sym?.Name;
-                            return SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(type).WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name))))).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)));
+                            return SyntaxFactory.FieldDeclaration(
+                                SyntaxFactory.VariableDeclaration(type)
+                                .WithVariables(SyntaxFactory.SingletonSeparatedList(
+                                    SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name)))))
+                                    .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory
+                                    .Token(SyntaxKind.PublicKeyword)));
                         });
 
 
                         if (captured.Where(m => (m as IParameterSymbol) != null).Any())
                         {
-
                             throw new UnsupportedCodeTransformationException("Cannot convert lambdas that refer to class fields using this keyword. Is this keyword neccessary?");
                         }
 
@@ -196,7 +215,11 @@ namespace lambda_converter
                             var sym = (m as ILocalSymbol);
                             var type = SyntaxFactory.ParseTypeName(sym.Type.ToDisplayString());
                             var name = sym.Name;
-                            var capturingFieldAssignment = SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, SyntaxFactory.IdentifierName(instanceName), SyntaxFactory.IdentifierName(name)), SyntaxFactory.IdentifierName(name)));
+                            var capturingFieldAssignment = SyntaxFactory.ExpressionStatement(SyntaxFactory
+                                .AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                                    SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    SyntaxFactory.IdentifierName(instanceName),
+                                    SyntaxFactory.IdentifierName(name)), SyntaxFactory.IdentifierName(name)));
 
                             return capturingFieldAssignment.NormalizeWhitespace().WithTrailingTrivia(SyntaxFactory.EndOfLine("")); ;
                         });
@@ -208,7 +231,6 @@ namespace lambda_converter
                         var method = SyntaxFactory.ParseExpression(instanceName + "." + methodDef.Identifier.ToFullString());
 
                         transInfo.MethodUsage = method;
-
                         transformations.Add(transInfo);
                     }
                 }
@@ -216,8 +238,10 @@ namespace lambda_converter
             // https://joshvarty.wordpress.com/2015/08/18/learn-roslyn-now-part-12-the-documenteditor/
             var documentEditor = DocumentEditor.CreateAsync(document).Result;
 
+            var firstChild = root.DescendantNodesAndSelf()
+                                    .OfType<ClassDeclarationSyntax>()
+                                    .FirstOrDefault()?.DescendantNodes()?.FirstOrDefault();
 
-            var firstChild = root.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>().FirstOrDefault()?.DescendantNodes()?.FirstOrDefault();
             if (firstChild == null)
                 throw new ImproperInputCodeException("Supplied code is an improper C# code. No parent class.");
 
@@ -225,9 +249,11 @@ namespace lambda_converter
             foreach (var trans in transformations)
             {
                 documentEditor.InsertAfter(firstChild, trans.ClassDeclaration);
-                var statements = trans.OriginalLambdaNode.Ancestors().OfType<BlockSyntax>().FirstOrDefault().ChildNodes()
-                    .OfType<LocalDeclarationStatementSyntax>().ToList<SyntaxNode>().Union(trans.OriginalLambdaNode.Ancestors()
-                    .OfType<ExpressionStatementSyntax>().ToList<SyntaxNode>()).ToList();
+                var statements = trans.OriginalLambdaNode.Ancestors()
+                    .OfType<BlockSyntax>().FirstOrDefault().ChildNodes()
+                        .OfType<LocalDeclarationStatementSyntax>().ToList<SyntaxNode>()
+                        .Union(trans.OriginalLambdaNode.Ancestors()
+                        .OfType<ExpressionStatementSyntax>().ToList<SyntaxNode>()).ToList();
 
                 var ancestors = trans.OriginalLambdaNode.Ancestors()
                     .OfType<LocalDeclarationStatementSyntax>().ToList<SyntaxNode>()
@@ -238,18 +264,17 @@ namespace lambda_converter
                 var prevStatement = statements.ElementAtOrDefault(index);
 
                 if (prevStatement != null)
-                    documentEditor.InsertBefore(prevStatement, (new List<SyntaxNode> { trans.InstanceInitSyntax }).Union(trans.StatementBeforeLambdaExpression));
+                    documentEditor.InsertBefore(prevStatement, (new List<SyntaxNode> {
+                        trans.InstanceInitSyntax
+                    }).Union(trans.StatementBeforeLambdaExpression));
 
                 documentEditor.ReplaceNode(trans.OriginalLambdaNode, trans.MethodUsage);
             }
 
             try
             {
-
                 var updatedDoc = Formatter.FormatAsync(documentEditor.GetChangedDocument()).Result;
-
                 string resultCode = updatedDoc.GetSyntaxTreeAsync().Result.ToString();
-
                 return resultCode;
             }
             catch (IOException ex)
@@ -262,5 +287,9 @@ namespace lambda_converter
             }
         }
 
+        private static string GetNextClassName()
+        {
+            return LAMBDA_CLASS_BASENAME + ++classIndex;
+        }
     }
 }

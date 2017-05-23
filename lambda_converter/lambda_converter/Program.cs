@@ -7,21 +7,28 @@ namespace lambda_converter
     class Program
     {
         const string CODELOCATION = @".\targetCode\LambdaCode.cs";
-        const string RESULTLOCATION = @".\targetCode\NonLambdaCode.cs";
 
+        static void LoadConvertWrite(string path = CODELOCATION)
+        {
+            var code = LambdaConverter.Convert(File.ReadAllText(path));
+            File.WriteAllText(CODELOCATION + ".converted", code);
+        }
         static void Main(string[] args)
         {
             try
             {
-                var code = LambdaConverter.Convert(File.ReadAllText(CODELOCATION));
-                var lines = code.Split('\n');
-                using (StreamWriter sr = new StreamWriter(RESULTLOCATION))
+                if (args.Length == 0)
                 {
-                    foreach (var line in lines)
+                    LoadConvertWrite();
+                }
+                else
+                {
+                    foreach (var path in args)
                     {
-                        sr.WriteLine(line);
+                        LoadConvertWrite(path);
                     }
                 }
+
 
             }
             catch (IOException ex)
